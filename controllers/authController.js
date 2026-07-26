@@ -60,3 +60,33 @@ exports.login = async (req, res) => {
         });
     }
 };
+
+exports.me = async (req, res) => {
+    try {
+
+        const result = await pool.query(
+            "SELECT id, role_id, nik, name, email, department, position, photo, status FROM users WHERE id = $1",
+            [req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User tidak ditemukan"
+            });
+        }
+
+        res.json({
+            success: true,
+            user: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        res.status(500).json({
+            success: false,
+            message: "Internal Server Error"
+        });
+    }
+};

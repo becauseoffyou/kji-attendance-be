@@ -17,18 +17,16 @@ app.get("/", (req, res) => {
 });
 
 // Test koneksi PostgreSQL
-pool.query("SELECT NOW()")
-    .then((result) => {
-        console.log("✅ PostgreSQL Connected");
+(async () => {
+    try {
+        console.log("🔄 Testing PostgreSQL connection...");
+
+        const result = await pool.query("SELECT NOW()");
+
+        console.log("✅ PostgreSQL Connected!");
         console.log(result.rows[0]);
-    })
-    .catch((err) => {
-        console.error("❌ PostgreSQL Error");
-        console.error(err.message);
-    });
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-});
+    } catch (err) {
+        console.error("❌ PostgreSQL Error:");
+        console.error(err);
+    }
+})();

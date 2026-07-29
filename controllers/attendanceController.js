@@ -40,23 +40,25 @@ exports.today = async (req, res) => {
 
         const attendance = result.rows[0];
 
-        let workingHours = null;
+       let workingHours = null;
 
-        if (attendance.check_in && attendance.check_out) {
+if (attendance.check_in) {
 
-            const diff =
-                new Date(attendance.check_out) -
-                new Date(attendance.check_in);
+    const endTime = attendance.check_out
+        ? new Date(attendance.check_out)
+        : new Date();
 
-            const hours = Math.floor(diff / (1000 * 60 * 60));
-            const minutes = Math.floor(
-                (diff % (1000 * 60 * 60)) / (1000 * 60)
-            );
+    const diff = endTime - new Date(attendance.check_in);
 
-            workingHours = `${hours} Jam ${minutes} Menit`;
+    const hours = Math.floor(diff / (1000 * 60 * 60));
 
-        }
+    const minutes = Math.floor(
+        (diff % (1000 * 60 * 60)) / (1000 * 60)
+    );
 
+    workingHours = `${hours} Jam ${minutes} Menit`;
+
+}
         return res.json({
             success: true,
             data: {
@@ -352,6 +354,34 @@ exports.checkOut = async (req, res) => {
     } catch (err) {
 
         return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+exports.list = async (req, res) => {
+
+    try {
+
+        const result = await pool.query(`
+            SELECT *
+            FROM announcements
+            WHERE
+                is_active = TRUE
+            ORDER BY sort_order ASC
+        `);
+
+        res.json({
+            success: true,
+            data: result.rows
+        });
+
+    } catch (err) {
+
+        res.status(500).json({
             success: false,
             message: err.message
         });

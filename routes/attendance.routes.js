@@ -7,6 +7,7 @@ const attendanceController = require("../controllers/attendanceController");
 router.get("/today", authMiddleware, attendanceController.today);
 router.get("/history", authMiddleware, attendanceController.history);
 router.get("/chart", authMiddleware, attendanceController.chart);
+router.get("/info", authMiddleware, attendanceController.list);
 
 router.post(
     "/checkin",

@@ -1,7 +1,7 @@
+const pool = require("../config/db");
 exports.currentOffice = async (req, res) => {
 
     try {
-
         const userId = req.user.id;
 
         const result = await pool.query(

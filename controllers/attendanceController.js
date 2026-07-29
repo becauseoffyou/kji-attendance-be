@@ -176,6 +176,15 @@ exports.checkIn = async (req, res) => {
             longitude
         } = req.body;
 
+        if (!req.file) {
+
+    return res.status(400).json({
+        success: false,
+        message: "Foto selfie wajib diambil."
+    });
+
+}
+
         if (!latitude || !longitude) {
 
             return res.status(400).json({

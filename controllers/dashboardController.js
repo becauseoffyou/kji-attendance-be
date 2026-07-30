@@ -16,6 +16,21 @@ exports.getDashboard = async (req, res) => {
     FROM attendance
     WHERE attendance_date = CURRENT_DATE
 `);
+
+const attendanceToday = await pool.query(`
+    SELECT
+        a.id,
+        u.name,
+        u.department,
+        a.check_in,
+        a.check_out,
+        a.status
+    FROM attendance a
+    JOIN users u
+        ON u.id = a.user_id
+    WHERE a.attendance_date = CURRENT_DATE
+    ORDER BY a.check_in ASC
+`);
 res.json({
     success: true,
     data: {
@@ -24,7 +39,7 @@ res.json({
         leave: 0,
         late: 0,
         chart: [],
-        attendance: []
+       attendance: attendanceToday.rows
     }
 });
 

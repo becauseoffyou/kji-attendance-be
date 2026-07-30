@@ -12,7 +12,7 @@ const attendanceRoutes = require("./routes/attendance.routes");
 const officeRoutes = require("./routes/office");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 
-app.use("/dashboard", dashboardRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.use(cors({
     origin: [

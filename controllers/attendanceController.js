@@ -335,13 +335,15 @@ exports.checkOut = async (req, res) => {
 
         const result = await pool.query(
             `
-            UPDATE attendance
-            SET
-                check_out = NOW(),
-                status='Pulang'
-            WHERE user_id=$1
-            AND attendance_date=CURRENT_DATE
-            RETURNING *
+          UPDATE attendance
+SET
+    check_out = NOW(),
+    status='Pulang'
+WHERE
+    user_id = $1
+AND attendance_date = CURRENT_DATE
+AND check_out IS NULL
+RETURNING *
             `,
             [userId]
         );

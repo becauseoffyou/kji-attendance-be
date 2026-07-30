@@ -4,10 +4,17 @@ exports.getDashboard = async (req, res) => {
 
     try {
 
+        const totalEmployee = await pool.query(`
+            SELECT COUNT(*) AS total
+            FROM users
+            WHERE role_id = 2
+              AND status = true
+        `);
+
         res.json({
             success: true,
             data: {
-                totalEmployee: 0,
+                totalEmployee: Number(totalEmployee.rows[0].total),
                 present: 0,
                 leave: 0,
                 late: 0,

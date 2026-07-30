@@ -11,17 +11,22 @@ exports.getDashboard = async (req, res) => {
               AND status = true
         `);
 
-        res.json({
-            success: true,
-            data: {
-                totalEmployee: Number(totalEmployee.rows[0].total),
-                present: 0,
-                leave: 0,
-                late: 0,
-                chart: [],
-                attendance: []
-            }
-        });
+        const presentToday = await pool.query(`
+    SELECT COUNT(*) AS total
+    FROM attendance
+    WHERE attendance_date = CURRENT_DATE
+`);
+res.json({
+    success: true,
+    data: {
+        totalEmployee: Number(totalEmployee.rows[0].total),
+        present: Number(presentToday.rows[0].total),
+        leave: 0,
+        late: 0,
+        chart: [],
+        attendance: []
+    }
+});
 
     } catch (err) {
 

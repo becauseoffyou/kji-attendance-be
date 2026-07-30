@@ -5,30 +5,56 @@ const cors = require("cors");
 
 const app = express();
 
+// ==============================
+// Database
+// ==============================
+const pool = require("./config/db");
+
+// ==============================
+// Routes
+// ==============================
+const authRoutes = require("./routes/authRoutes");
+const attendanceRoutes = require("./routes/attendance.routes");
+const officeRoutes = require("./routes/office");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+
+// ==============================
+// Middleware
+// ==============================
 app.use(cors({
     origin: [
         "http://localhost:5173",
         "https://kji-attendance-fe.vercel.app"
     ],
-    credentials: true
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Baru setelah itu semua routes
+// ==============================
+// API Routes
+// ==============================
 app.use("/api/auth", authRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/office", officeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
+// ==============================
+// Root
+// ==============================
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "KJI Attendance API Running 🚀",
+        message: "KJI Attendance API Running 🚀"
     });
 });
 
-// Test koneksi PostgreSQL
+// ==============================
+// PostgreSQL Test
+// ==============================
 (async () => {
     try {
 
@@ -36,16 +62,20 @@ app.get("/", (req, res) => {
 
         const result = await pool.query("SELECT NOW()");
 
-        console.log("✅ PostgreSQL Connected!");
+        console.log("✅ PostgreSQL Connected");
         console.log(result.rows[0]);
 
     } catch (err) {
 
+        console.error("❌ PostgreSQL Error");
         console.error(err);
 
     }
 })();
 
+// ==============================
+// Server
+// ==============================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {

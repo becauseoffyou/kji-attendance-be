@@ -10,6 +10,9 @@ const pool = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const attendanceRoutes = require("./routes/attendance.routes");
 const officeRoutes = require("./routes/office");
+const dashboardRoutes = require("./routes/dashboardRoutes");
+
+app.use("/dashboard", dashboardRoutes);
 
 app.use(cors({
     origin: [

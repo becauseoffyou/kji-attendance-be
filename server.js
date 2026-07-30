@@ -5,15 +5,6 @@ const cors = require("cors");
 
 const app = express();
 
-const pool = require("./config/db");
-
-const authRoutes = require("./routes/authRoutes");
-const attendanceRoutes = require("./routes/attendance.routes");
-const officeRoutes = require("./routes/office");
-const dashboardRoutes = require("./routes/dashboardRoutes");
-
-app.use("/api/dashboard", dashboardRoutes);
-
 app.use(cors({
     origin: [
         "http://localhost:5173",
@@ -24,9 +15,11 @@ app.use(cors({
 
 app.use(express.json());
 
+// Baru setelah itu semua routes
 app.use("/api/auth", authRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/office", officeRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.get("/", (req, res) => {
     res.json({

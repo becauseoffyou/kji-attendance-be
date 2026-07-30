@@ -7,7 +7,7 @@ exports.getDashboard = async (req, res) => {
         const totalEmployee = await pool.query(`
             SELECT COUNT(*) AS total
             FROM users
-            WHERE role_id = 2
+            WHERE role_id = 3
               AND status = true
         `);
 

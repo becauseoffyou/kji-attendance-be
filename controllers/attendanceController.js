@@ -103,7 +103,12 @@ exports.history = async (req, res) => {
 
                 CASE
                     WHEN check_out IS NOT NULL THEN
-                        justify_interval(check_out - check_in)::text
+                        CONCAT(
+                            EXTRACT(HOUR FROM (check_out - check_in))::int,
+                            'j ',
+                            EXTRACT(MINUTE FROM (check_out - check_in))::int,
+                            'm'
+                        )
                     ELSE
                         '-'
                 END AS working_hours

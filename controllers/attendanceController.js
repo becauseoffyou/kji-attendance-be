@@ -88,16 +88,30 @@ if (attendance.check_in) {
 */
 
 exports.history = async (req, res) => {
-
     try {
 
         const userId = req.user.id;
 
         const result = await pool.query(
             `
-            SELECT *
+            SELECT
+                id,
+                attendance_date,
+                check_in,
+                check_out,
+                status,
+
+                CASE
+                    WHEN check_out IS NOT NULL THEN
+                        justify_interval(check_out - check_in)::text
+                    ELSE
+                        '-'
+                END AS working_hours
+
             FROM attendance
-            WHERE user_id=$1
+
+            WHERE user_id = $1
+
             ORDER BY attendance_date DESC
             `,
             [userId]
@@ -110,13 +124,14 @@ exports.history = async (req, res) => {
 
     } catch (err) {
 
+        console.error(err);
+
         return res.status(500).json({
             success: false,
             message: err.message
         });
 
     }
-
 };
 
 /*

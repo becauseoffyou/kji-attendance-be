@@ -9,76 +9,66 @@ const haversine = require("../utils/haversine");
 */
 
 exports.today = async (req, res) => {
-    try {
+  try {
+    const userId = req.user.id;
 
-        const userId = req.user.id;
-
-        const result = await pool.query(
-            `
+    const result = await pool.query(
+      `
             SELECT *
             FROM attendance
             WHERE user_id = $1
             AND attendance_date = CURRENT_DATE
             LIMIT 1
             `,
-            [userId]
-        );
+      [userId],
+    );
 
-        if (result.rows.length === 0) {
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          checkIn: null,
+          checkOut: null,
+          status: "Belum Check In",
+          workingHours: null,
+        },
+      });
+    }
 
-            return res.json({
-                success: true,
-                data: {
-                    checkIn: null,
-                    checkOut: null,
-                    status: "Belum Check In",
-                    workingHours: null
-                }
-            });
+    const attendance = result.rows[0];
 
-        }
+    let workingHours = null;
 
-        const attendance = result.rows[0];
-
-       let workingHours = null;
-
-if (attendance.check_in) {
-
-    const endTime = attendance.check_out
+    if (attendance.check_in) {
+      const endTime = attendance.check_out
         ? new Date(attendance.check_out)
         : new Date();
 
-    const diff = endTime - new Date(attendance.check_in);
+      const diff = endTime - new Date(attendance.check_in);
 
-    const hours = Math.floor(diff / (1000 * 60 * 60));
+      const hours = Math.floor(diff / (1000 * 60 * 60));
 
-    const minutes = Math.floor(
-        (diff % (1000 * 60 * 60)) / (1000 * 60)
-    );
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    workingHours = `${hours} Jam ${minutes} Menit`;
-
-}
-        return res.json({
-            success: true,
-            data: {
-                checkIn: attendance.check_in,
-                checkOut: attendance.check_out,
-                status: attendance.status,
-                workingHours
-            }
-        });
-
-    } catch (err) {
-
-        console.error(err);
-
-        return res.status(500).json({
-            success: false,
-            message: err.message
-        });
-
+      workingHours = `${hours} Jam ${minutes} Menit`;
     }
+    return res.json({
+      success: true,
+      data: {
+        checkIn: attendance.check_in,
+        checkOut: attendance.check_out,
+        status: attendance.status,
+        workingHours,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };
 
 /*
@@ -88,12 +78,11 @@ if (attendance.check_in) {
 */
 
 exports.history = async (req, res) => {
-    try {
+  try {
+    const userId = req.user.id;
 
-        const userId = req.user.id;
-
-        const result = await pool.query(
-            `
+    const result = await pool.query(
+      `
             SELECT
                 id,
                 attendance_date,
@@ -119,24 +108,21 @@ exports.history = async (req, res) => {
 
             ORDER BY attendance_date DESC
             `,
-            [userId]
-        );
+      [userId],
+    );
 
-        return res.json({
-            success: true,
-            data: result.rows
-        });
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error(err);
 
-    } catch (err) {
-
-        console.error(err);
-
-        return res.status(500).json({
-            success: false,
-            message: err.message
-        });
-
-    }
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };
 
 /*
@@ -146,13 +132,11 @@ exports.history = async (req, res) => {
 */
 
 exports.chart = async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-    try {
-
-        const userId = req.user.id;
-
-        const result = await pool.query(
-            `
+    const result = await pool.query(
+      `
             SELECT
                 DATE(attendance_date) as date,
                 status
@@ -160,23 +144,19 @@ exports.chart = async (req, res) => {
             WHERE user_id=$1
             ORDER BY attendance_date
             `,
-            [userId]
-        );
+      [userId],
+    );
 
-        return res.json({
-            success: true,
-            data: result.rows
-        });
-
-    } catch (err) {
-
-        return res.status(500).json({
-            success: false,
-            message: err.message
-        });
-
-    }
-
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };
 
 /*
@@ -186,112 +166,125 @@ exports.chart = async (req, res) => {
 */
 
 exports.checkIn = async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-    try {
+    const {
+      latitude,
+      longitude,
+      attendance_type = "OFFICE",
+      notes = "",
+    } = req.body;
 
-        const userId = req.user.id;
-
-        const {
-            latitude,
-            longitude
-        } = req.body;
-
-        if (!req.file) {
-
-    return res.status(400).json({
+    if (!req.file) {
+      return res.status(400).json({
         success: false,
-        message: "Foto selfie wajib diambil."
-    });
+        message: "Foto selfie wajib diambil.",
+      });
+    }
 
-}
+    if (!latitude || !longitude) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
 
-        if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude dan Longitude wajib diisi.",
+      });
+    }
 
-            return res.status(400).json({
-                success: false,
-                message: "Latitude dan Longitude wajib diisi."
-            });
+    // Ambil lokasi kantor user
 
-        }
-
-        // cek lokasi kantor user
-
-        const officeResult = await pool.query(
-            `
+    const officeResult = await pool.query(
+      `
             SELECT o.*
             FROM users u
             JOIN office_locations o
-            ON u.office_location_id=o.id
-            WHERE u.id=$1
+                ON u.office_location_id = o.id
+            WHERE u.id = $1
             `,
-            [userId]
-        );
+      [userId],
+    );
 
-        if (officeResult.rows.length === 0) {
+    if (officeResult.rows.length === 0) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
 
-            return res.status(400).json({
-                success: false,
-                message: "Lokasi kantor belum diatur."
-            });
+      return res.status(400).json({
+        success: false,
+        message: "Lokasi kantor belum diatur.",
+      });
+    }
 
-        }
+    const office = officeResult.rows[0];
 
-        const office = officeResult.rows[0];
+    // Sudah check in hari ini?
 
-        // cek sudah check in
-
-        const todayAttendance = await pool.query(
-            `
+    const todayAttendance = await pool.query(
+      `
             SELECT id
             FROM attendance
-            WHERE user_id=$1
-            AND attendance_date=CURRENT_DATE
+            WHERE user_id = $1
+            AND attendance_date = CURRENT_DATE
             `,
-            [userId]
-        );
+      [userId],
+    );
 
-        if (todayAttendance.rows.length > 0) {
+    if (todayAttendance.rows.length > 0) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
 
-            if (req.file && fs.existsSync(req.file.path)) {
-                fs.unlinkSync(req.file.path);
-            }
+      return res.status(400).json({
+        success: false,
+        message: "Anda sudah Check In hari ini.",
+      });
+    }
 
-            return res.status(400).json({
-                success: false,
-                message: "Anda sudah Check In hari ini."
-            });
+    // Hitung jarak
 
-        }
+    const distance = haversine(
+      Number(latitude),
+      Number(longitude),
+      Number(office.latitude),
+      Number(office.longitude),
+    );
 
-        // hitung jarak
+    // Jenis absensi yang boleh di luar kantor
 
-        const distance = haversine(
-            Number(latitude),
-            Number(longitude),
-            Number(office.latitude),
-            Number(office.longitude)
-        );
+    const outsideAttendance = [
+      "WFH",
+      "CLIENT",
+      "MEETING",
+      "BUSINESS_TRIP",
+      "OTHER",
+    ];
 
-        if (distance > office.radius) {
+    const allowOutsideOffice = outsideAttendance.includes(attendance_type);
 
-            if (req.file && fs.existsSync(req.file.path)) {
-                fs.unlinkSync(req.file.path);
-            }
+    // Kalau OFFICE wajib dalam radius
 
-            return res.status(400).json({
-                success: false,
-                message: "Anda berada di luar radius kantor.",
-                distance: Math.round(distance),
-                radius: office.radius
-            });
+    if (distance > Number(office.radius) && !allowOutsideOffice) {
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
 
-        }
+      return res.status(400).json({
+        success: false,
+        message: "Anda berada di luar radius kantor.",
+        distance: Math.round(distance),
+        radius: office.radius,
+      });
+    }
 
-        const photoPath =
-            req.file ? req.file.path : null;
+    const photoPath = req.file.path;
 
-        await pool.query(
-            `
+    // Simpan attendance
+
+    await pool.query(
+      `
             INSERT INTO attendance
             (
                 user_id,
@@ -300,6 +293,8 @@ exports.checkIn = async (req, res) => {
                 check_in_lat,
                 check_in_lng,
                 photo_path,
+                attendance_type,
+                notes,
                 status
             )
             VALUES
@@ -310,35 +305,33 @@ exports.checkIn = async (req, res) => {
                 $2,
                 $3,
                 $4,
+                $5,
+                $6,
                 'Hadir'
             )
             `,
-            [
-                userId,
-                latitude,
-                longitude,
-                photoPath
-            ]
-        );
+      [userId, latitude, longitude, photoPath, attendance_type, notes],
+    );
 
-        return res.json({
-            success: true,
-            message: "Check In berhasil.",
-            office: office.office_name,
-            distance: Math.round(distance)
-        });
+    return res.json({
+      success: true,
+      message: "Check In berhasil.",
+      office: office.office_name,
+      distance: Math.round(distance),
+      attendance_type,
+    });
+  } catch (err) {
+    console.error(err);
 
-    } catch (err) {
-
-        console.error(err);
-
-        return res.status(500).json({
-            success: false,
-            message: err.message
-        });
-
+    if (req.file && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
     }
 
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };
 
 /*
@@ -348,13 +341,11 @@ exports.checkIn = async (req, res) => {
 */
 
 exports.checkOut = async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-    try {
-
-        const userId = req.user.id;
-
-        const result = await pool.query(
-            `
+    const result = await pool.query(
+      `
           UPDATE attendance
 SET
     check_out = NOW(),
@@ -365,39 +356,31 @@ AND attendance_date = CURRENT_DATE
 AND check_out IS NULL
 RETURNING *
             `,
-            [userId]
-        );
+      [userId],
+    );
 
-        if (result.rows.length === 0) {
-
-            return res.status(400).json({
-                success: false,
-                message: "Anda belum Check In."
-            });
-
-        }
-
-        return res.json({
-            success: true,
-            message: "Check Out berhasil."
-        });
-
-    } catch (err) {
-
-        return res.status(500).json({
-            success: false,
-            message: err.message
-        });
-
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Anda belum Check In.",
+      });
     }
 
+    return res.json({
+      success: true,
+      message: "Check Out berhasil.",
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };
 
 exports.list = async (req, res) => {
-
-    try {
-
-        const result = await pool.query(`
+  try {
+    const result = await pool.query(`
             SELECT *
             FROM announcements
             WHERE
@@ -405,18 +388,14 @@ exports.list = async (req, res) => {
             ORDER BY sort_order ASC
         `);
 
-        res.json({
-            success: true,
-            data: result.rows
-        });
-
-    } catch (err) {
-
-        res.status(500).json({
-            success: false,
-            message: err.message
-        });
-
-    }
-
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };

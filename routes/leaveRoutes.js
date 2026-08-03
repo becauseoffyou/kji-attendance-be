@@ -4,7 +4,7 @@ const router = express.Router();
 
 const auth = require("../middleware/authMiddleware");
 
-const upload = require("../middleware/uploadMiddleware");
+const upload = require("../middleware/uploadAttendance");
 
 const leaveController = require("../controllers/leaveController");
 

@@ -78,27 +78,30 @@ exports.history = async (req, res) => {
     const userId = req.user.id;
 
     const result = await pool.query(
-      `  SELECT
+      `
+      SELECT
           id,
           attendance_date,
-          check_in,
-          check_out,
+
+          check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
+          check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
+
           status,
           attendance_type,
           notes,
 
           CASE
-              WHEN check_in::time <= TIME '09:00:00'
+              WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time <= TIME '09:00:00'
               THEN 'Tepat Waktu'
               ELSE 'Terlambat'
           END AS attendance_status,
 
           CASE
-              WHEN check_in::time > TIME '09:00:00'
+              WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time > TIME '09:00:00'
               THEN FLOOR(
                   EXTRACT(
                       EPOCH FROM (
-                          check_in::time - TIME '09:00:00'
+                          (check_in AT TIME ZONE 'Asia/Jakarta')::time - TIME '09:00:00'
                       )
                   ) / 60
               )::int
@@ -121,7 +124,8 @@ exports.history = async (req, res) => {
 
       WHERE user_id = $1
 
-      ORDER BY attendance_date DESC`,
+      ORDER BY attendance_date DESC
+      `,
       [userId],
     );
 

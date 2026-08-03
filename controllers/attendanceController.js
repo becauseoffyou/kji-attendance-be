@@ -82,56 +82,50 @@ exports.history = async (req, res) => {
     const userId = req.user.id;
 
     const result = await pool.query(
-      `
-           SELECT
-    id,
-    attendance_date,
+      `  SELECT
+          id,
+          attendance_date,
+          check_in,
+          check_out,
+          status,
+          attendance_type,
+          notes,
 
-    (check_in AT TIME ZONE 'Asia/Jakarta') AS check_in,
+          CASE
+              WHEN check_in::time <= TIME '09:00:00'
+              THEN 'Tepat Waktu'
+              ELSE 'Terlambat'
+          END AS attendance_status,
 
-    (check_out AT TIME ZONE 'Asia/Jakarta') AS check_out,
+          CASE
+              WHEN check_in::time > TIME '09:00:00'
+              THEN FLOOR(
+                  EXTRACT(
+                      EPOCH FROM (
+                          check_in::time - TIME '09:00:00'
+                      )
+                  ) / 60
+              )::int
+              ELSE 0
+          END AS late_minutes,
 
-    status,
+          CASE
+              WHEN check_out IS NOT NULL THEN
+                  CONCAT(
+                      EXTRACT(HOUR FROM (check_out - check_in))::int,
+                      'j ',
+                      EXTRACT(MINUTE FROM (check_out - check_in))::int,
+                      'm'
+                  )
+              ELSE
+                  '-'
+          END AS working_hours
 
-    CASE
-        WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time
-            <= TIME '09:00:00'
-        THEN 'Tepat Waktu'
-        ELSE 'Terlambat'
-    END AS attendance_status,
+      FROM attendance
 
-    CASE
-        WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time
-            > TIME '09:00:00'
-        THEN FLOOR(
-            EXTRACT(
-                EPOCH FROM (
-                    (check_in AT TIME ZONE 'Asia/Jakarta')::time
-                    - TIME '09:00:00'
-                )
-            ) / 60
-        )::int
-        ELSE 0
-    END AS late_minutes,
+      WHERE user_id = $1
 
-    CASE
-        WHEN check_out IS NOT NULL THEN
-            CONCAT(
-                EXTRACT(HOUR FROM (check_out - check_in))::int,
-                'j ',
-                EXTRACT(MINUTE FROM (check_out - check_in))::int,
-                'm'
-            )
-        ELSE
-            '-'
-    END AS working_hours
-
-FROM attendance
-
-WHERE user_id = $1
-
-ORDER BY attendance_date DESC
-            `,
+      ORDER BY attendance_date DESC`,
       [userId],
     );
 

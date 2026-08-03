@@ -19,6 +19,12 @@ exports.create = async (req, res) => {
     }
 
     const attachment = req.file ? req.file.path : null;
+    console.log("FILE:", req.file);
+    console.log("ATTACHMENT:", attachment);
+
+    if (req.file) {
+      console.log("EXISTS:", fs.existsSync(req.file.path), req.file.path);
+    }
     const today = new Date().toISOString().split("T")[0];
 
     if (start_date < today) {

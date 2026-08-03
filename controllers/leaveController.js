@@ -135,8 +135,22 @@ exports.history = async (req, res) => {
       [req.user.id],
     );
 
+    const balance = await pool.query(
+      `
+    SELECT leave_balance
+    FROM users
+    WHERE id = $1
+    `,
+      [userId],
+    );
+
     return res.json({
       success: true,
+
+      summary: {
+        leave_balance: balance.rows[0].leave_balance,
+      },
+
       data: result.rows,
     });
   } catch (err) {

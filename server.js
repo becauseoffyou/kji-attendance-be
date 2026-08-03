@@ -17,19 +17,18 @@ const authRoutes = require("./routes/authRoutes");
 const attendanceRoutes = require("./routes/attendance.routes");
 const officeRoutes = require("./routes/office");
 const dashboardRoutes = require("./routes/dashboardRoutes");
-
+const leaveRoutes = require("./routes/leaveRoutes");
 // ==============================
 // Middleware
 // ==============================
-app.use(cors({
-    origin: [
-        "http://localhost:5173",
-        "https://kji-attendance-fe.vercel.app"
-    ],
+app.use(
+  cors({
+    origin: ["http://localhost:5173", "https://kji-attendance-fe.vercel.app"],
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-}));
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -41,36 +40,27 @@ app.use("/api/auth", authRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/office", officeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
-
+app.use("/api/leave", leaveRoutes);
 // ==============================
 // Root
 // ==============================
 app.get("/", (req, res) => {
-    res.json({
-        success: true,
-        message: "KJI Attendance API Running 🚀"
-    });
+  res.json({
+    success: true,
+    message: "KJI Attendance API Running 🚀",
+  });
 });
 
 // ==============================
 // PostgreSQL Test
 // ==============================
 (async () => {
-    try {
-
-        console.log("🔄 Testing PostgreSQL connection...");
-
-        const result = await pool.query("SELECT NOW()");
-
-        console.log("✅ PostgreSQL Connected");
-        console.log(result.rows[0]);
-
-    } catch (err) {
-
-        console.error("❌ PostgreSQL Error");
-        console.error(err);
-
-    }
+  try {
+    const result = await pool.query("SELECT NOW()");
+  } catch (err) {
+    console.error("❌ PostgreSQL Error");
+    console.error(err);
+  }
 })();
 
 // ==============================
@@ -79,5 +69,5 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });

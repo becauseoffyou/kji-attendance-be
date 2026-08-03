@@ -83,30 +83,54 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-            SELECT
-                id,
-                attendance_date,
-                check_in,
-                check_out,
-                status,
+           SELECT
+    id,
+    attendance_date,
 
-                CASE
-                    WHEN check_out IS NOT NULL THEN
-                        CONCAT(
-                            EXTRACT(HOUR FROM (check_out - check_in))::int,
-                            'j ',
-                            EXTRACT(MINUTE FROM (check_out - check_in))::int,
-                            'm'
-                        )
-                    ELSE
-                        '-'
-                END AS working_hours
+    (check_in AT TIME ZONE 'Asia/Jakarta') AS check_in,
 
-            FROM attendance
+    (check_out AT TIME ZONE 'Asia/Jakarta') AS check_out,
 
-            WHERE user_id = $1
+    status,
 
-            ORDER BY attendance_date DESC
+    CASE
+        WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time
+            <= TIME '09:00:00'
+        THEN 'Tepat Waktu'
+        ELSE 'Terlambat'
+    END AS attendance_status,
+
+    CASE
+        WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time
+            > TIME '09:00:00'
+        THEN FLOOR(
+            EXTRACT(
+                EPOCH FROM (
+                    (check_in AT TIME ZONE 'Asia/Jakarta')::time
+                    - TIME '09:00:00'
+                )
+            ) / 60
+        )::int
+        ELSE 0
+    END AS late_minutes,
+
+    CASE
+        WHEN check_out IS NOT NULL THEN
+            CONCAT(
+                EXTRACT(HOUR FROM (check_out - check_in))::int,
+                'j ',
+                EXTRACT(MINUTE FROM (check_out - check_in))::int,
+                'm'
+            )
+        ELSE
+            '-'
+    END AS working_hours
+
+FROM attendance
+
+WHERE user_id = $1
+
+ORDER BY attendance_date DESC
             `,
       [userId],
     );

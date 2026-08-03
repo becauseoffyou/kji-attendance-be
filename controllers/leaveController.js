@@ -119,20 +119,20 @@ exports.history = async (req, res) => {
   try {
     const result = await pool.query(
       `
-            SELECT
-                id,
-                leave_type,
-                start_date,
-                end_date,
-                reason,
-                attachment,
-                status,
-                created_at
-            FROM leave_requests
-            WHERE user_id = $1
-            ORDER BY created_at DESC
-            `,
-      [req.user.id],
+    SELECT
+      id,
+      leave_type,
+      start_date,
+      end_date,
+      reason,
+      attachment,
+      status,
+      created_at
+    FROM leave_requests
+    WHERE user_id = $1
+    ORDER BY created_at DESC
+  `,
+      [userId],
     );
 
     const balance = await pool.query(
@@ -140,7 +140,7 @@ exports.history = async (req, res) => {
     SELECT leave_balance
     FROM users
     WHERE id = $1
-    `,
+  `,
       [userId],
     );
 

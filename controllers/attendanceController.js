@@ -281,6 +281,20 @@ exports.checkIn = async (req, res) => {
 
     const photoPath = req.file.path;
 
+    const officeStart = "09:00:00";
+
+    const checkInTime = new Date();
+
+    const jamMasuk = new Date();
+
+    jamMasuk.setHours(9, 0, 0, 0);
+
+    const isLate = checkInTime > jamMasuk;
+
+    const lateMinutes = isLate
+      ? Math.floor((checkInTime - jamMasuk) / 60000)
+      : 0;
+
     // Simpan attendance
 
     await pool.query(
@@ -295,7 +309,9 @@ exports.checkIn = async (req, res) => {
                 photo_path,
                 attendance_type,
                 notes,
-                status
+                status,
+                is_late,
+late_minutes
             )
             VALUES
             (
@@ -307,10 +323,21 @@ exports.checkIn = async (req, res) => {
                 $4,
                 $5,
                 $6,
-                'Hadir'
+                'Hadir',
+                $7,
+                $8
             )
             `,
-      [userId, latitude, longitude, photoPath, attendance_type, notes],
+      [
+        userId,
+        latitude,
+        longitude,
+        photoPath,
+        attendance_type,
+        notes,
+        isLate,
+        lateMinutes,
+      ],
     );
 
     return res.json({

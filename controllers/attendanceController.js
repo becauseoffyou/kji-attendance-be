@@ -344,19 +344,30 @@ exports.checkOut = async (req, res) => {
   try {
     const userId = req.user.id;
 
+    const { latitude, longitude } = req.body;
+
+    if (!latitude || !longitude) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude dan Longitude wajib diisi.",
+      });
+    }
+
     const result = await pool.query(
       `
-          UPDATE attendance
-SET
-    check_out = NOW(),
-    status='Pulang'
-WHERE
-    user_id = $1
-AND attendance_date = CURRENT_DATE
-AND check_out IS NULL
-RETURNING *
+            UPDATE attendance
+            SET
+                check_out = NOW(),
+                check_out_lat = $1,
+                check_out_lng = $2,
+                status = 'Pulang'
+            WHERE
+                user_id = $3
+            AND attendance_date = CURRENT_DATE
+            AND check_out IS NULL
+            RETURNING *
             `,
-      [userId],
+      [latitude, longitude, userId],
     );
 
     if (result.rows.length === 0) {

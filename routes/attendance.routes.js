@@ -10,11 +10,16 @@ router.get("/chart", authMiddleware, attendanceController.chart);
 router.get("/info", authMiddleware, attendanceController.list);
 
 router.post(
-    "/checkin",
-    authMiddleware,
-    uploadAttendance.single("photo"),
-    attendanceController.checkIn
+  "/checkin",
+  authMiddleware,
+  uploadAttendance.single("photo"),
+  attendanceController.checkIn,
 );
-router.post("/checkout", authMiddleware, attendanceController.checkOut);
+router.post(
+  "/checkout",
+  authMiddleware,
+  uploadAttendance.single("photo"),
+  attendanceController.checkOut,
+);
 
 module.exports = router;

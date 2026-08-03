@@ -14,12 +14,23 @@ exports.today = async (req, res) => {
 
     const result = await pool.query(
       `
-            SELECT *
-            FROM attendance
-            WHERE user_id = $1
-            AND attendance_date = CURRENT_DATE
-            LIMIT 1
-            `,
+      SELECT
+          *,
+          CASE
+              WHEN check_in IS NOT NULL THEN
+                  CONCAT(
+                      EXTRACT(HOUR FROM (COALESCE(check_out, NOW()) - check_in))::int,
+                      ' Jam ',
+                      EXTRACT(MINUTE FROM (COALESCE(check_out, NOW()) - check_in))::int,
+                      ' Menit'
+                  )
+              ELSE NULL
+          END AS working_hours
+      FROM attendance
+      WHERE user_id = $1
+      AND attendance_date = CURRENT_DATE
+      LIMIT 1
+      `,
       [userId],
     );
 
@@ -37,28 +48,13 @@ exports.today = async (req, res) => {
 
     const attendance = result.rows[0];
 
-    let workingHours = null;
-
-    if (attendance.check_in) {
-      const endTime = attendance.check_out
-        ? new Date(attendance.check_out)
-        : new Date();
-
-      const diff = endTime - new Date(attendance.check_in);
-
-      const hours = Math.floor(diff / (1000 * 60 * 60));
-
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-      workingHours = `${hours} Jam ${minutes} Menit`;
-    }
     return res.json({
       success: true,
       data: {
         checkIn: attendance.check_in,
         checkOut: attendance.check_out,
         status: attendance.status,
-        workingHours,
+        workingHours: attendance.working_hours,
       },
     });
   } catch (err) {

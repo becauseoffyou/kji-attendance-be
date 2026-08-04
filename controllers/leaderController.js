@@ -142,11 +142,15 @@ exports.leaveDetail = async (req, res) => {
           (1000 * 60 * 60 * 24),
       ) + 1;
 
+    const isAnnualLeave = data.leave_type === "CUTI";
+
     data.leave_days = leaveDays;
 
-    data.remaining_leave = Math.max(0, data.leave_balance - leaveDays);
-    data.can_approve = data.leave_balance >= leaveDays;
+    data.remaining_leave = isAnnualLeave
+      ? Math.max(0, data.leave_balance - leaveDays)
+      : data.leave_balance;
 
+    data.can_approve = isAnnualLeave ? data.leave_balance >= leaveDays : true;
     return res.json({
       success: true,
       data,

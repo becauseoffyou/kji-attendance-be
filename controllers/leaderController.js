@@ -4,8 +4,9 @@ exports.leaveRequests = async (req, res) => {
   try {
     const supervisorId = req.user.id;
 
-    const result = await pool.query(
-      `
+    const status = req.query.status || "PENDING_SUPERVISOR";
+
+    let sql = `
       SELECT
 
           lr.id,
@@ -16,6 +17,7 @@ exports.leaveRequests = async (req, res) => {
           lr.attachment,
           lr.status,
           lr.created_at,
+          lr.approved_at,
 
           u.id AS employee_id,
           u.name,
@@ -27,20 +29,56 @@ exports.leaveRequests = async (req, res) => {
       ON u.id = lr.user_id
 
       WHERE
-
           u.supervisor_id = $1
+    `;
 
-      AND
+    const params = [supervisorId];
+    if (status !== "ALL") {
+      sql += ` AND lr.status = $2`;
 
-          lr.status = 'PENDING_SUPERVISOR'
+      params.push(status);
+    }
 
+    sql += `
       ORDER BY lr.created_at DESC
+    `;
+
+    const result = await pool.query(sql, params);
+
+    const summary = await pool.query(
+      `
+      SELECT
+
+          COUNT(*) FILTER (
+              WHERE lr.status='PENDING_SUPERVISOR'
+          ) AS pending,
+
+          COUNT(*) FILTER (
+              WHERE lr.status='APPROVED'
+          ) AS approved,
+
+          COUNT(*) FILTER (
+              WHERE lr.status='REJECTED'
+          ) AS rejected,
+
+          COUNT(*) AS total
+
+      FROM leave_requests lr
+
+      JOIN users u
+      ON u.id = lr.user_id
+
+      WHERE
+      u.supervisor_id = $1
       `,
       [supervisorId],
     );
 
     return res.json({
       success: true,
+
+      summary: summary.rows[0],
+
       data: result.rows,
     });
   } catch (err) {

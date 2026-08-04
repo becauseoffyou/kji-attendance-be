@@ -52,3 +52,60 @@ exports.leaveRequests = async (req, res) => {
     });
   }
 };
+
+exports.leaveDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const supervisorId = req.user.id;
+
+    const result = await pool.query(
+      `
+            SELECT
+
+                lr.*,
+
+                u.id AS employee_id,
+                u.name,
+                u.email,
+                u.department,
+                u.position,
+                u.photo,
+                u.leave_balance
+
+            FROM leave_requests lr
+
+            JOIN users u
+            ON u.id = lr.user_id
+
+            WHERE
+
+                lr.id = $1
+
+            AND
+
+                u.supervisor_id = $2
+            `,
+      [id, supervisorId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Data tidak ditemukan.",
+      });
+    }
+
+    res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

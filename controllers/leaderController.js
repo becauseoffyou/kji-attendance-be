@@ -107,6 +107,7 @@ exports.leaveDetail = async (req, res) => {
     data.leave_days = leaveDays;
 
     data.remaining_leave = Math.max(0, data.leave_balance - leaveDays);
+    data.can_approve = data.leave_balance >= leaveDays;
 
     return res.json({
       success: true,

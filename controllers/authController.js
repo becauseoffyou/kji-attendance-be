@@ -79,7 +79,29 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT id, role_id, nik, name, email, department, position, photo, status FROM users WHERE id = $1",
+      `
+SELECT
+
+u.id,
+u.role_id,
+
+r.name AS role,
+
+u.nik,
+u.name,
+u.email,
+u.department,
+u.position,
+u.photo,
+u.status
+
+FROM users u
+
+JOIN roles r
+ON r.id=u.role_id
+
+WHERE u.id=$1
+`,
       [req.user.id],
     );
 

@@ -154,9 +154,6 @@ exports.history = async (req, res) => {
       [userId],
     );
 
-    console.log(result.rows);
-    console.log(balance.rows);
-
     return res.json({
       success: true,
 

@@ -137,6 +137,7 @@ exports.history = async (req, res) => {
       reason,
       attachment,
       status,
+      approval_note,
       created_at
     FROM leave_requests
     WHERE user_id = $1

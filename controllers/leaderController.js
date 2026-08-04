@@ -121,3 +121,219 @@ exports.leaveDetail = async (req, res) => {
     });
   }
 };
+
+exports.approveLeave = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { id } = req.params;
+    const { note } = req.body;
+
+    const supervisorId = req.user.id;
+
+    const result = await client.query(
+      `
+            SELECT
+
+                lr.*,
+
+                u.leave_balance,
+                u.supervisor_id
+
+            FROM leave_requests lr
+
+            JOIN users u
+            ON u.id = lr.user_id
+
+            WHERE lr.id = $1
+
+            FOR UPDATE
+            `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "Pengajuan tidak ditemukan.",
+      });
+    }
+
+    const leave = result.rows[0];
+
+    if (leave.supervisor_id !== supervisorId) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses.",
+      });
+    }
+
+    if (leave.status !== "PENDING_SUPERVISOR") {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "Pengajuan sudah diproses.",
+      });
+    }
+
+    const leaveDays =
+      Math.ceil(
+        (new Date(leave.end_date) - new Date(leave.start_date)) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
+
+    if (leave.leave_balance < leaveDays) {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "Sisa cuti tidak mencukupi.",
+      });
+    }
+
+    // Kurangi saldo cuti
+    await client.query(
+      `
+            UPDATE users
+            SET leave_balance = leave_balance - $1
+            WHERE id = $2
+            `,
+      [leaveDays, leave.user_id],
+    );
+
+    // Approve
+    await client.query(
+      `
+            UPDATE leave_requests
+            SET
+
+                status = 'APPROVED',
+                approval_note = $1,
+                approved_by = $2,
+                approved_at = NOW()
+
+            WHERE id = $3
+            `,
+      [note, supervisorId, id],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Pengajuan berhasil disetujui.",
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+exports.rejectLeave = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { id } = req.params;
+    const { note } = req.body;
+
+    const supervisorId = req.user.id;
+
+    const result = await client.query(
+      `
+            SELECT
+
+                lr.*,
+                u.supervisor_id
+
+            FROM leave_requests lr
+
+            JOIN users u
+            ON u.id = lr.user_id
+
+            WHERE lr.id = $1
+
+            FOR UPDATE
+            `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "Pengajuan tidak ditemukan.",
+      });
+    }
+
+    const leave = result.rows[0];
+
+    if (leave.supervisor_id !== supervisorId) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses.",
+      });
+    }
+
+    if (leave.status !== "PENDING_SUPERVISOR") {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "Pengajuan sudah diproses.",
+      });
+    }
+
+    await client.query(
+      `
+            UPDATE leave_requests
+            SET
+
+                status = 'REJECTED',
+                approval_note = $1,
+                approved_by = $2,
+                approved_at = NOW()
+
+            WHERE id = $3
+            `,
+      [note, supervisorId, id],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Pengajuan berhasil ditolak.",
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  } finally {
+    client.release();
+  }
+};

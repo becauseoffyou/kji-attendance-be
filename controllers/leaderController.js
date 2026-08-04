@@ -228,7 +228,9 @@ exports.approveLeave = async (req, res) => {
           (1000 * 60 * 60 * 24),
       ) + 1;
 
-    if (leave.leave_balance < leaveDays) {
+    const isAnnualLeave = leave.leave_type === "CUTI";
+
+    if (isAnnualLeave && leave.leave_balance < leaveDays) {
       await client.query("ROLLBACK");
 
       return res.status(400).json({
@@ -238,14 +240,16 @@ exports.approveLeave = async (req, res) => {
     }
 
     // Kurangi saldo cuti
-    await client.query(
-      `
-            UPDATE users
-            SET leave_balance = leave_balance - $1
-            WHERE id = $2
-            `,
-      [leaveDays, leave.user_id],
-    );
+    if (isAnnualLeave) {
+      await client.query(
+        `
+      UPDATE users
+      SET leave_balance = leave_balance - $1
+      WHERE id = $2
+    `,
+        [leaveDays, leave.user_id],
+      );
+    }
 
     // Approve
     await client.query(

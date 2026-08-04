@@ -19,6 +19,7 @@ const attendanceRoutes = require("./routes/attendance.routes");
 const officeRoutes = require("./routes/office");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
+const supervisorRoutes = require("./routes/leaderRoutes");
 // ==============================
 // Middleware
 // ==============================
@@ -43,6 +44,7 @@ app.use("/api/attendance", attendanceRoutes);
 app.use("/api/office", officeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/leave", leaveRoutes);
+app.use("/api/leader", supervisorRoutes);
 // ==============================
 // Root
 // ==============================

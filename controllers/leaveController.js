@@ -19,8 +19,6 @@ exports.create = async (req, res) => {
     }
 
     const attachment = req.file ? req.file.path : null;
-    console.log("FILE:", req.file);
-    console.log("ATTACHMENT:", attachment);
 
     if (req.file) {
       console.log("EXISTS:", fs.existsSync(req.file.path), req.file.path);
@@ -54,7 +52,7 @@ SELECT id
 FROM leave_requests
 WHERE
 user_id = $1
-AND status = 'PENDING'
+AND status = 'PENDING_SUPERVISOR'
 AND (
     start_date <= $3
     AND end_date >= $2
@@ -75,26 +73,36 @@ AND (
     }
     await pool.query(
       `
-            INSERT INTO leave_requests
-            (
-                user_id,
-                leave_type,
-                start_date,
-                end_date,
-                reason,
-                attachment
-            )
-            VALUES
-            (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6
-            )
+         INSERT INTO leave_requests
+(
+    user_id,
+    leave_type,
+    start_date,
+    end_date,
+    reason,
+    attachment,
+    status
+)
+VALUES
+(
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7
+)
             `,
-      [userId, leave_type, start_date, end_date, reason, attachment],
+      [
+        userId,
+        leave_type,
+        start_date,
+        end_date,
+        reason,
+        attachment,
+        "PENDING_SUPERVISOR",
+      ],
     );
 
     return res.json({

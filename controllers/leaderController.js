@@ -61,31 +61,31 @@ exports.leaveDetail = async (req, res) => {
 
     const result = await pool.query(
       `
-            SELECT
+      SELECT
 
-                lr.*,
+          lr.*,
 
-                u.id AS employee_id,
-                u.name,
-                u.email,
-                u.department,
-                u.position,
-                u.photo,
-                u.leave_balance
+          u.id AS employee_id,
+          u.name,
+          u.email,
+          u.department,
+          u.position,
+          u.photo,
+          u.leave_balance
 
-            FROM leave_requests lr
+      FROM leave_requests lr
 
-            JOIN users u
-            ON u.id = lr.user_id
+      JOIN users u
+      ON u.id = lr.user_id
 
-            WHERE
+      WHERE
 
-                lr.id = $1
+          lr.id = $1
 
-            AND
+      AND
 
-                u.supervisor_id = $2
-            `,
+          u.supervisor_id = $2
+      `,
       [id, supervisorId],
     );
 
@@ -96,14 +96,26 @@ exports.leaveDetail = async (req, res) => {
       });
     }
 
-    res.json({
+    const data = result.rows[0];
+
+    const leaveDays =
+      Math.ceil(
+        (new Date(data.end_date) - new Date(data.start_date)) /
+          (1000 * 60 * 60 * 24),
+      ) + 1;
+
+    data.leave_days = leaveDays;
+
+    data.remaining_leave = Math.max(0, data.leave_balance - leaveDays);
+
+    return res.json({
       success: true,
-      data: result.rows[0],
+      data,
     });
   } catch (err) {
     console.error(err);
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: err.message,
     });

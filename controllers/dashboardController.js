@@ -45,13 +45,17 @@ WHERE
         ELSE TO_CHAR(a.check_out, 'HH24:MI')
     END AS check_out,
 
-    a.status
+    CASE
+        WHEN a.check_out IS NOT NULL THEN 'Pulang'
+        WHEN a.check_in::time > '09:00:00' THEN 'Terlambat'
+        ELSE 'Hadir'
+    END AS status
 
 FROM attendance a
 JOIN users u
     ON u.id = a.user_id
 WHERE a.attendance_date = CURRENT_DATE
-ORDER BY a.check_in ASC
+ORDER BY a.check_in ASC;
 `);
 
     const attendanceChart = await pool.query(`
@@ -79,7 +83,6 @@ ORDER BY d.attendance_date;
       total: Number(item.total),
     }));
 
-    console.log(attendanceToday.rows);
     res.json({
       success: true,
       data: {

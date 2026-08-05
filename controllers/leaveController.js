@@ -71,29 +71,25 @@ AND (
         message: "Masih ada pengajuan pada rentang tanggal tersebut.",
       });
     }
-    await pool.query(
+
+    const leaveResult = await pool.query(
       `
-         INSERT INTO leave_requests
-(
-    user_id,
-    leave_type,
-    start_date,
-    end_date,
-    reason,
-    attachment,
-    status
-)
-VALUES
-(
-    $1,
-    $2,
-    $3,
-    $4,
-    $5,
-    $6,
-    $7
-)
-            `,
+  INSERT INTO leave_requests
+  (
+      user_id,
+      leave_type,
+      start_date,
+      end_date,
+      reason,
+      attachment,
+      status
+  )
+  VALUES
+  (
+      $1,$2,$3,$4,$5,$6,$7
+  )
+  RETURNING id
+  `,
       [
         userId,
         leave_type,
@@ -102,6 +98,47 @@ VALUES
         reason,
         attachment,
         "PENDING_SUPERVISOR",
+      ],
+    );
+
+    const employee = await pool.query(
+      `
+  SELECT
+      name,
+      supervisor_id
+  FROM users
+  WHERE id = $1
+  `,
+      [userId],
+    );
+
+    const supervisor = employee.rows[0];
+
+    await pool.query(
+      `
+  INSERT INTO notifications
+  (
+      user_id,
+      title,
+      message,
+      type,
+      reference_id
+  )
+  VALUES
+  (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5
+  )
+  `,
+      [
+        supervisor.supervisor_id,
+        "Pengajuan Baru",
+        `${supervisor.name} mengajukan ${leave_type}.`,
+        "LEAVE_PENDING",
+        leaveResult.rows[0].id,
       ],
     );
 

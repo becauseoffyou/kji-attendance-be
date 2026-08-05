@@ -15,6 +15,23 @@ exports.getDashboard = async (req, res) => {
     WHERE attendance_date = CURRENT_DATE
 `);
 
+    const leaveToday = await pool.query(`
+SELECT COUNT(*) AS total
+FROM leave_requests
+WHERE
+    status = 'APPROVED'
+    AND CURRENT_DATE BETWEEN start_date AND end_date
+`);
+
+    const lateToday = await pool.query(`
+SELECT COUNT(*) AS total
+FROM attendance
+WHERE
+    attendance_date = CURRENT_DATE
+    AND check_in IS NOT NULL
+    AND check_in::time > '09:00:00'
+`);
+
     const attendanceToday = await pool.query(`
     SELECT
         a.id,
@@ -61,8 +78,8 @@ ORDER BY d.attendance_date;
       data: {
         totalEmployee: Number(totalEmployee.rows[0].total),
         present: Number(presentToday.rows[0].total),
-        leave: 0,
-        late: 0,
+        leave: Number(leaveToday.rows[0].total),
+        late: Number(lateToday.rows[0].total),
         chart,
         attendance: attendanceToday.rows,
       },

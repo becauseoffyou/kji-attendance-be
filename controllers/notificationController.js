@@ -28,3 +28,57 @@ exports.badge = async (req, res) => {
     });
   }
 };
+
+exports.readPendingLeave = async (req, res) => {
+  try {
+    await pool.query(
+      `
+      UPDATE notifications
+      SET is_read = true
+      WHERE
+        user_id = $1
+        AND type = 'LEAVE_PENDING'
+        AND is_read = false
+      `,
+      [req.user.id],
+    );
+
+    return res.json({
+      success: true,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+exports.readLeaveResult = async (req, res) => {
+  try {
+    await pool.query(
+      `
+      UPDATE notifications
+      SET is_read = true
+      WHERE
+        user_id = $1
+        AND type IN ('LEAVE_APPROVED', 'LEAVE_REJECTED')
+        AND is_read = false
+      `,
+      [req.user.id],
+    );
+
+    return res.json({
+      success: true,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

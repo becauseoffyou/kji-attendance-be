@@ -271,6 +271,34 @@ exports.approveLeave = async (req, res) => {
       [note, supervisorId, id],
     );
 
+    await client.query(
+      `
+  INSERT INTO notifications
+  (
+      user_id,
+      title,
+      message,
+      type,
+      reference_id
+  )
+  VALUES
+  (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5
+  )
+  `,
+      [
+        leave.user_id,
+        "Pengajuan Disetujui",
+        `Pengajuan ${leave.leave_type} Anda telah disetujui.`,
+        "LEAVE_APPROVED",
+        leave.id,
+      ],
+    );
+
     await client.query("COMMIT");
 
     return res.json({
@@ -363,6 +391,34 @@ exports.rejectLeave = async (req, res) => {
             WHERE id = $3
             `,
       [note, supervisorId, id],
+    );
+
+    await client.query(
+      `
+  INSERT INTO notifications
+  (
+      user_id,
+      title,
+      message,
+      type,
+      reference_id
+  )
+  VALUES
+  (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5
+  )
+  `,
+      [
+        leave.user_id,
+        "Pengajuan Ditolak",
+        `Pengajuan ${leave.leave_type} Anda ditolak.`,
+        "LEAVE_REJECTED",
+        leave.id,
+      ],
     );
 
     await client.query("COMMIT");

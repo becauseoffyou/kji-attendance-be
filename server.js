@@ -20,6 +20,7 @@ const officeRoutes = require("./routes/office");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const leaveRoutes = require("./routes/leaveRoutes");
 const supervisorRoutes = require("./routes/leaderRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 // ==============================
 // Middleware
 // ==============================

@@ -34,17 +34,24 @@ WHERE
 
     const attendanceToday = await pool.query(`
     SELECT
-        a.id,
-        u.name,
-        u.department,
-        a.check_in,
-        a.check_out,
-        a.status
-    FROM attendance a
-    JOIN users u
-        ON u.id = a.user_id
-    WHERE a.attendance_date = CURRENT_DATE
-    ORDER BY a.check_in ASC
+    a.id,
+    u.name,
+    u.department,
+
+    TO_CHAR(a.check_in, 'HH24:MI') AS check_in,
+
+    CASE
+        WHEN a.check_out IS NULL THEN NULL
+        ELSE TO_CHAR(a.check_out, 'HH24:MI')
+    END AS check_out,
+
+    a.status
+
+FROM attendance a
+JOIN users u
+    ON u.id = a.user_id
+WHERE a.attendance_date = CURRENT_DATE
+ORDER BY a.check_in ASC
 `);
 
     const attendanceChart = await pool.query(`

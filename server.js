@@ -45,6 +45,7 @@ app.use("/api/office", officeRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/leave", leaveRoutes);
 app.use("/api/leader", supervisorRoutes);
+app.use("/notification", notificationRoutes);
 // ==============================
 // Root
 // ==============================

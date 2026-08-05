@@ -79,7 +79,7 @@ ORDER BY d.attendance_date;
       total: Number(item.total),
     }));
 
-    console.log(chart);
+    console.log(attendanceToday.rows);
     res.json({
       success: true,
       data: {

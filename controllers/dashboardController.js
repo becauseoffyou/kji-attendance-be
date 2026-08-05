@@ -31,13 +31,22 @@ exports.getDashboard = async (req, res) => {
 `);
 
     const attendanceChart = await pool.query(`
+WITH days AS (
+    SELECT generate_series(
+        CURRENT_DATE - INTERVAL '6 days',
+        CURRENT_DATE,
+        INTERVAL '1 day'
+    )::date AS attendance_date
+)
+
 SELECT
-    attendance_date,
-    COUNT(*) AS total
-FROM attendance
-WHERE attendance_date >= CURRENT_DATE - INTERVAL '6 days'
-GROUP BY attendance_date
-ORDER BY attendance_date
+    d.attendance_date,
+    COALESCE(COUNT(a.id), 0) AS total
+FROM days d
+LEFT JOIN attendance a
+    ON a.attendance_date = d.attendance_date
+GROUP BY d.attendance_date
+ORDER BY d.attendance_date;
 `);
     const chart = attendanceChart.rows.map((item) => ({
       day: new Date(item.attendance_date).toLocaleDateString("id-ID", {

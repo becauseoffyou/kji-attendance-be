@@ -80,6 +80,9 @@ ORDER BY d.attendance_date;
         present: Number(presentToday.rows[0].total),
         leave: Number(leaveToday.rows[0].total),
         late: Number(lateToday.rows[0].total),
+        notCheckIn:
+          Number(totalEmployee.rows[0].total) -
+          Number(presentToday.rows[0].total),
         chart,
         attendance: attendanceToday.rows,
       },

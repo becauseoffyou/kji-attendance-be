@@ -613,6 +613,11 @@ exports.getDailyAttendance = async (req, res) => {
     search,
   } = req.query;
   try {
+    console.log("REQ QUERY:", req.query);
+    console.log("DATE:", date);
+    const queryDate = date || null;
+
+    console.log("queryDate =", queryDate);
     const result = await pool.query(
       `
             
@@ -672,7 +677,7 @@ AND (
 ORDER BY u.name;
 
         `,
-      [date || null, department || "", status || "", search || ""],
+      [queryDate, department || "", status || "", search || ""],
     );
 
     return res.json({

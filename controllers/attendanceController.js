@@ -480,7 +480,7 @@ COALESCE(leave_summary.cuti,0) AS leave,
 
 COALESCE(leave_summary.izin,0) AS permission,
 
-COALESCE(leave_summary.sakit,0) AS sick,
+COALESCE(leave_summary.sakit,0) AS sick
             FROM users u
 
             LEFT JOIN attendance a

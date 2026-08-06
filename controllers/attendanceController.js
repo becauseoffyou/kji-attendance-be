@@ -617,7 +617,7 @@ exports.getDailyAttendance = async (req, res) => {
     console.log("DATE:", date);
     const queryDate = date || null;
 
-    console.log("queryDate =", queryDate);
+    console.log("queryDates =", queryDate);
     const result = await pool.query(
       `
             

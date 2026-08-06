@@ -691,3 +691,27 @@ ORDER BY u.name;
     });
   }
 };
+
+exports.getDepartments = async (req, res) => {
+  try {
+    const result = await pool.query(`
+            SELECT DISTINCT department
+            FROM users
+            WHERE role_id = 3
+              AND department IS NOT NULL
+            ORDER BY department
+        `);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

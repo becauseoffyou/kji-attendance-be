@@ -16,7 +16,13 @@ router.get(
   attendanceController.getAttendanceSummary,
 );
 
-router.get("/daily", attendanceController.getDailyAttendance);
+router.get("/daily", adminMiddleware, attendanceController.getDailyAttendance);
+
+router.get(
+  "/departments",
+  adminMiddleware,
+  attendanceController.getDepartments,
+);
 
 router.get(
   "/employee/:id",

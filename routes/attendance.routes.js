@@ -11,8 +11,8 @@ router.get("/chart", authMiddleware, attendanceController.chart);
 router.get("/info", authMiddleware, attendanceController.list);
 router.get(
   "/summary",
-  authMiddleware,
-  adminMiddleware,
+  // authMiddleware,
+  // adminMiddleware,
   attendanceController.getAttendanceSummary,
 );
 

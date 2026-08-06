@@ -601,3 +601,65 @@ exports.getEmployeeAttendance = async (req, res) => {
     });
   }
 };
+
+exports.getDailyAttendance = async (req, res) => {
+  try {
+    const result = await pool.query(`
+            
+            SELECT
+
+                a.id,
+
+                u.id AS user_id,
+
+                u.name,
+
+                u.department,
+
+                a.check_in,
+
+                a.check_out,
+
+                a.status,
+
+                a.is_late,
+
+                a.late_minutes,
+
+                a.photo_path,
+
+                a.check_in_lat,
+
+                a.check_in_lng,
+
+                a.attendance_type,
+
+                a.attendance_date
+
+            FROM attendance a
+
+            JOIN users u
+                ON u.id = a.user_id
+
+            WHERE
+                a.attendance_date = CURRENT_DATE
+                AND u.role_id = 3
+
+            ORDER BY
+                u.name
+
+        `);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

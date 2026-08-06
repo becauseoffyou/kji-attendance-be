@@ -16,6 +16,8 @@ router.get(
   attendanceController.getAttendanceSummary,
 );
 
+router.get("/daily", attendanceController.getDailyAttendance);
+
 router.get(
   "/employee/:id",
   authMiddleware,

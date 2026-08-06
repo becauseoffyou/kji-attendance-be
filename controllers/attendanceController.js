@@ -580,7 +580,8 @@ exports.getEmployeeAttendance = async (req, res) => {
 
             WHERE user_id = $1
 
-            ORDER BY attendance_date DESC
+           ORDER BY
+    check_in DESC
         `,
       [id],
     );

@@ -606,47 +606,46 @@ exports.getDailyAttendance = async (req, res) => {
   try {
     const result = await pool.query(`
             
-            SELECT
+           SELECT
 
-                a.id,
+    u.id,
 
-                u.id AS user_id,
+    u.name,
 
-                u.name,
+    u.department,
 
-                u.department,
+    a.check_in,
 
-                a.check_in,
+    a.check_out,
 
-                a.check_out,
+    COALESCE(a.status,'Belum Check In') AS status,
 
-                a.status,
+    COALESCE(a.is_late,false) AS is_late,
 
-                a.is_late,
+    COALESCE(a.late_minutes,0) AS late_minutes,
 
-                a.late_minutes,
+    a.photo_path,
 
-                a.photo_path,
+    a.check_in_lat,
 
-                a.check_in_lat,
+    a.check_in_lng
 
-                a.check_in_lng,
+FROM users u
 
-                a.attendance_type,
+LEFT JOIN attendance a
 
-                a.attendance_date
+ON
+a.user_id = u.id
 
-            FROM attendance a
+AND a.attendance_date = CURRENT_DATE
 
-            JOIN users u
-                ON u.id = a.user_id
+WHERE
 
-            WHERE
-                a.attendance_date = CURRENT_DATE
-                AND u.role_id = 3
+u.role_id = 3
 
-            ORDER BY
-                u.name
+ORDER BY
+
+u.name;
 
         `);
 

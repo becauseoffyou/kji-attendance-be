@@ -475,19 +475,66 @@ exports.getAttendanceSummary = async (req, res) => {
 
                 SUM(
                     COALESCE(a.late_minutes, 0)
-                ) AS late_minutes
+                ) AS late_minutes,
+COALESCE(leave_summary.cuti,0) AS leave,
 
+COALESCE(leave_summary.izin,0) AS permission,
+
+COALESCE(leave_summary.sakit,0) AS sick,
             FROM users u
 
             LEFT JOIN attendance a
                 ON a.user_id = u.id
+                LEFT JOIN (
+
+    SELECT
+
+        user_id,
+
+        SUM(
+            CASE
+                WHEN leave_type='CUTI'
+                AND status='APPROVED'
+                THEN (end_date-start_date)+1
+                ELSE 0
+            END
+        ) AS cuti,
+
+        SUM(
+            CASE
+                WHEN leave_type='IZIN'
+                AND status='APPROVED'
+                THEN (end_date-start_date)+1
+                ELSE 0
+            END
+        ) AS izin,
+
+        SUM(
+            CASE
+                WHEN leave_type='SAKIT'
+                AND status='APPROVED'
+                THEN (end_date-start_date)+1
+                ELSE 0
+            END
+        ) AS sakit
+
+    FROM leave_requests
+
+    GROUP BY user_id
+
+) leave_summary
+
+ON leave_summary.user_id = u.id
 
             WHERE u.role_id = 3
 
-            GROUP BY
-                u.id,
-                u.name,
-                u.department
+          GROUP BY
+    u.id,
+    u.name,
+    u.department,
+    leave_summary.cuti,
+    leave_summary.izin,
+    leave_summary.sakit
 
             ORDER BY
                 u.name

@@ -553,3 +553,50 @@ ON leave_summary.user_id = u.id
     });
   }
 };
+
+exports.getEmployeeAttendance = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+            SELECT
+
+                attendance_date,
+
+                check_in,
+
+                check_out,
+
+                status,
+
+                is_late,
+
+                late_minutes,
+
+                attendance_type
+
+            FROM attendance
+
+            WHERE user_id = $1
+
+            ORDER BY attendance_date DESC
+        `,
+      [id],
+    );
+
+    res.json({
+      success: true,
+
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+
+      message: err.message,
+    });
+  }
+};

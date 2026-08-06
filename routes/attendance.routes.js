@@ -11,9 +11,16 @@ router.get("/chart", authMiddleware, attendanceController.chart);
 router.get("/info", authMiddleware, attendanceController.list);
 router.get(
   "/summary",
-  // authMiddleware,
-  // adminMiddleware,
+  authMiddleware,
+  adminMiddleware,
   attendanceController.getAttendanceSummary,
+);
+
+router.get(
+  "/employee/:id",
+  authMiddleware,
+  adminMiddleware,
+  attendanceController.getEmployeeAttendance,
 );
 
 router.post(

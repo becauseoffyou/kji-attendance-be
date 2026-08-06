@@ -603,8 +603,18 @@ exports.getEmployeeAttendance = async (req, res) => {
 };
 
 exports.getDailyAttendance = async (req, res) => {
+  const {
+    date,
+
+    department,
+
+    status,
+
+    search,
+  } = req.query;
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
             
            SELECT
 
@@ -643,11 +653,42 @@ WHERE
 
 u.role_id = 3
 
+AND (
+    $1::date IS NULL
+    OR a.attendance_date = $1
+)
+
+AND (
+    $2 = ''
+    OR u.department = $2
+)
+
+AND (
+    $3 = ''
+    OR COALESCE(a.status,'Belum Check In') = $3
+)
+
+AND (
+
+    $4 = ''
+
+    OR
+
+    LOWER(u.name)
+
+    LIKE
+
+    LOWER('%' || $4 || '%')
+
+)
+
 ORDER BY
 
 u.name;
 
-        `);
+        `,
+      [date || null, department || "", status || "", search || ""],
+    );
 
     return res.json({
       success: true,

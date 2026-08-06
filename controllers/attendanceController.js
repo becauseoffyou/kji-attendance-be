@@ -643,20 +643,16 @@ exports.getDailyAttendance = async (req, res) => {
 FROM users u
 
 LEFT JOIN attendance a
-
 ON
-a.user_id = u.id
-
-AND a.attendance_date = CURRENT_DATE
-
-WHERE
-
-u.role_id = 3
-
-AND (
+    a.user_id = u.id
+AND
+(
     $1::date IS NULL
     OR a.attendance_date = $1
 )
+
+WHERE
+    u.role_id = 3
 
 AND (
     $2 = ''
@@ -669,22 +665,11 @@ AND (
 )
 
 AND (
-
     $4 = ''
-
-    OR
-
-    LOWER(u.name)
-
-    LIKE
-
-    LOWER('%' || $4 || '%')
-
+    OR LOWER(u.name) LIKE LOWER('%' || $4 || '%')
 )
 
-ORDER BY
-
-u.name;
+ORDER BY u.name;
 
         `,
       [date || null, department || "", status || "", search || ""],

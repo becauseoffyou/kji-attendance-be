@@ -455,3 +455,54 @@ exports.list = async (req, res) => {
     });
   }
 };
+
+exports.getAttendanceSummary = async (req, res) => {
+  try {
+    const result = await pool.query(`
+            SELECT
+                u.id,
+                u.name,
+                u.department,
+
+                COUNT(a.id) AS present,
+
+                SUM(
+                    CASE
+                        WHEN a.is_late = true THEN 1
+                        ELSE 0
+                    END
+                ) AS late,
+
+                SUM(
+                    COALESCE(a.late_minutes, 0)
+                ) AS late_minutes
+
+            FROM users u
+
+            LEFT JOIN attendance a
+                ON a.user_id = u.id
+
+            WHERE u.role_id = 3
+
+            GROUP BY
+                u.id,
+                u.name,
+                u.department
+
+            ORDER BY
+                u.name
+        `);
+
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

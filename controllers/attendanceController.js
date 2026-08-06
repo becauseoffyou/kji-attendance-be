@@ -613,11 +613,9 @@ exports.getDailyAttendance = async (req, res) => {
     search,
   } = req.query;
   try {
-    console.log("REQ QUERY:", req.query);
-    console.log("DATE:", date);
-    const queryDate = date || null;
-
-    console.log("queryDates =", queryDate);
+    // kalau frontend tidak kirim tanggal,
+    // otomatis pakai tanggal hari ini
+    const queryDate = date || new Date().toISOString().slice(0, 10);
     const result = await pool.query(
       `
             
@@ -677,7 +675,7 @@ AND (
 ORDER BY u.name;
 
         `,
-      [queryDate, department || "", status || "", search || ""],
+      [queryDate, department, status, search],
     );
 
     return res.json({

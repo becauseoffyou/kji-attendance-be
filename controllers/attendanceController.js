@@ -481,16 +481,9 @@ exports.getAttendanceSummary = async (req, res) => {
 
   const year = Number(req.query.year) || new Date().getFullYear();
 
-  const workingDays = getWorkingDays(year, month);
-  const {
-    month,
+  const department = req.query.department || "";
 
-    year,
-
-    department,
-
-    search,
-  } = req.query;
+  const search = req.query.search || "";
   try {
     const result = await pool.query(
       `

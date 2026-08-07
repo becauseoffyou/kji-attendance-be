@@ -900,3 +900,59 @@ exports.getEmployeeOfMonth = async (req, res) => {
     });
   }
 };
+
+exports.getDashboardSummary = async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+
+    const result = await pool.query(
+      `
+            SELECT
+
+                COUNT(*) FILTER (
+                    WHERE a.check_in IS NOT NULL
+                ) AS hadir,
+
+                COUNT(*) FILTER (
+                    WHERE a.is_late = true
+                ) AS terlambat,
+
+                COUNT(*) FILTER (
+                    WHERE a.check_in IS NOT NULL
+                    AND a.check_out IS NULL
+                ) AS belum_pulang,
+
+                (
+                    SELECT COUNT(*)
+                    FROM users u
+                    WHERE
+                        u.role_id = 3
+                        AND NOT EXISTS (
+                            SELECT 1
+                            FROM attendance x
+                            WHERE
+                                x.user_id = u.id
+                                AND x.attendance_date = $1
+                        )
+                ) AS belum_checkin
+
+            FROM attendance a
+
+            WHERE a.attendance_date = $1
+            `,
+      [today],
+    );
+
+    return res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

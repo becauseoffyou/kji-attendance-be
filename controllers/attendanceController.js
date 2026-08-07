@@ -476,18 +476,15 @@ function getWorkingDays(year, month) {
   return total;
 }
 
-exports.getAttendanceSummary = async (req, res) => {
-  const month = Number(req.query.month) || new Date().getMonth() + 1;
-
-  const year = Number(req.query.year) || new Date().getFullYear();
-
-  const department = req.query.department || "";
-
-  const search = req.query.search || "";
-  const workingDays = getWorkingDays(year, month);
-  try {
-    const result = await pool.query(
-      `
+async function getSummaryData(
+  month,
+  year,
+  workingDays,
+  department = "",
+  search = "",
+) {
+  const result = await pool.query(
+    `
             SELECT
                 u.id,
                 u.name,
@@ -646,7 +643,30 @@ AND
             ORDER BY
                 u.name
         `,
-      [month, year, workingDays, department || "", search || ""],
+    [month, year, workingDays, department || "", search || ""],
+  );
+}
+
+exports.getAttendanceSummary = async (req, res) => {
+  const month = Number(req.query.month) || new Date().getMonth() + 1;
+
+  const year = Number(req.query.year) || new Date().getFullYear();
+
+  const department = req.query.department || "";
+
+  const search = req.query.search || "";
+  const workingDays = getWorkingDays(year, month);
+  try {
+    const result = await getSummaryData(
+      month,
+
+      year,
+
+      workingDays,
+
+      department,
+
+      search,
     );
 
     res.json({
@@ -830,177 +850,45 @@ exports.getEmployeeOfMonth = async (req, res) => {
 
   const year = Number(req.query.year) || new Date().getFullYear();
 
-  const department = req.query.department || "";
-
-  const search = req.query.search || "";
   const workingDays = getWorkingDays(year, month);
+
   try {
-    const result = await pool.query(
-      `
-            SELECT
-                u.id,
-                u.name,
-                u.department,
+    const result = await getSummaryData(month, year, workingDays);
 
-                COUNT(a.id) AS present,
+    const ranking = result.rows
+      .sort((a, b) => {
+        // Alpha paling sedikit
+        if (Number(a.alpha) !== Number(b.alpha)) {
+          return Number(a.alpha) - Number(b.alpha);
+        }
 
-                SUM(
-                    CASE
-                        WHEN a.is_late = true THEN 1
-                        ELSE 0
-                    END
-                ) AS late,
+        // Persentase paling tinggi
+        if (Number(a.percent) !== Number(b.percent)) {
+          return Number(b.percent) - Number(a.percent);
+        }
 
-                SUM(
-                    COALESCE(a.late_minutes, 0)
-                ) AS late_minutes,
-COALESCE(leave_summary.cuti,0) AS leave,
+        // Telat paling sedikit
+        if (Number(a.late) !== Number(b.late)) {
+          return Number(a.late) - Number(b.late);
+        }
 
-COALESCE(leave_summary.izin,0) AS permission,
+        // Menit telat paling sedikit
+        if (Number(a.late_minutes) !== Number(b.late_minutes)) {
+          return Number(a.late_minutes) - Number(b.late_minutes);
+        }
 
-COALESCE(leave_summary.sakit,0) AS sick,(
-    COUNT(a.id)
-    +
-    COALESCE(leave_summary.cuti,0)
-    +
-    COALESCE(leave_summary.izin,0)
-    +
-    COALESCE(leave_summary.sakit,0)
-) AS attendance_total,
+        // Hadir paling banyak
+        if (Number(a.present) !== Number(b.present)) {
+          return Number(b.present) - Number(a.present);
+        }
 
-GREATEST(
-
-0,
-
-$3
--
-(
-    COUNT(a.id)
-    +
-    COALESCE(leave_summary.cuti,0)
-    +
-    COALESCE(leave_summary.izin,0)
-    +
-    COALESCE(leave_summary.sakit,0)
-)
-
-) AS alpha,
-
-ROUND(
-
-(
-(
-COUNT(a.id)
-+
-COALESCE(leave_summary.cuti,0)
-+
-COALESCE(leave_summary.izin,0)
-+
-COALESCE(leave_summary.sakit,0)
-)::numeric
-
-/
-
-NULLIF($3,0)
-
-)*100
-
-,2)
-
-AS percent
-            FROM users u
-LEFT JOIN attendance a
-ON
-    a.user_id = u.id
-
-AND EXTRACT(MONTH FROM a.attendance_date) = $1
-
-AND EXTRACT(YEAR FROM a.attendance_date) = $2
-                LEFT JOIN (
-
-    SELECT
-
-        user_id,
-
-        SUM(
-            CASE
-                WHEN leave_type='CUTI'
-                AND status='APPROVED'
-                 AND approved_by IS NOT NULL
-                THEN (end_date-start_date)+1
-                ELSE 0
-            END
-        ) AS cuti,
-
-        SUM(
-            CASE
-                WHEN leave_type='IZIN'
-                AND status='APPROVED'
-                 AND approved_by IS NOT NULL
-                THEN (end_date-start_date)+1
-                ELSE 0
-            END
-        ) AS izin,
-
-        SUM(
-            CASE
-                WHEN leave_type='SAKIT'
-                AND status='APPROVED'
-                 AND approved_by IS NOT NULL
-                THEN (end_date-start_date)+1
-                ELSE 0
-            END
-        ) AS sakit
-
-  FROM leave_requests
-
-WHERE
-
-EXTRACT(MONTH FROM start_date) = $1
-
-AND
-
-EXTRACT(YEAR FROM start_date) = $2
-
-GROUP BY user_id
-
-) leave_summary
-
-ON leave_summary.user_id = u.id
-
-           WHERE
-    u.role_id = 3
-
-AND
-(
-    $4 = ''
-    OR u.department = $4
-) AND
-(
-    $5 = ''
-
-    OR LOWER(u.name)
-
-    LIKE LOWER('%' || $5 || '%')
-)
-
-          GROUP BY
-    u.id,
-    u.name,
-    u.department,
-    leave_summary.cuti,
-    leave_summary.izin,
-    leave_summary.sakit
-
-            ORDER BY
-                u.name
-        `,
-      [month, year, workingDays, department || "", search || ""],
-    );
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 5);
 
     res.json({
       success: true,
-      data: result.rows,
+      data: ranking,
     });
   } catch (err) {
     console.error(err);

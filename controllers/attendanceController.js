@@ -485,11 +485,166 @@ async function getSummaryData(
 ) {
   const result = await pool.query(
     `
-        ...
+            SELECT
+                u.id,
+                u.name,
+                u.department,
+
+                COUNT(a.id) AS present,
+
+                SUM(
+                    CASE
+                        WHEN a.is_late = true THEN 1
+                        ELSE 0
+                    END
+                ) AS late,
+
+                SUM(
+                    COALESCE(a.late_minutes, 0)
+                ) AS late_minutes,
+COALESCE(leave_summary.cuti,0) AS leave,
+
+COALESCE(leave_summary.izin,0) AS permission,
+
+COALESCE(leave_summary.sakit,0) AS sick,(
+    COUNT(a.id)
+    +
+    COALESCE(leave_summary.cuti,0)
+    +
+    COALESCE(leave_summary.izin,0)
+    +
+    COALESCE(leave_summary.sakit,0)
+) AS attendance_total,
+
+GREATEST(
+
+0,
+
+$3
+-
+(
+    COUNT(a.id)
+    +
+    COALESCE(leave_summary.cuti,0)
+    +
+    COALESCE(leave_summary.izin,0)
+    +
+    COALESCE(leave_summary.sakit,0)
+)
+
+) AS alpha,
+
+ROUND(
+
+(
+(
+COUNT(a.id)
++
+COALESCE(leave_summary.cuti,0)
++
+COALESCE(leave_summary.izin,0)
++
+COALESCE(leave_summary.sakit,0)
+)::numeric
+
+/
+
+NULLIF($3,0)
+
+)*100
+
+,2)
+
+AS percent
+            FROM users u
+LEFT JOIN attendance a
+ON
+    a.user_id = u.id
+
+AND EXTRACT(MONTH FROM a.attendance_date) = $1
+
+AND EXTRACT(YEAR FROM a.attendance_date) = $2
+                LEFT JOIN (
+
+    SELECT
+
+        user_id,
+
+        SUM(
+            CASE
+                WHEN leave_type='CUTI'
+                AND status='APPROVED'
+                 AND approved_by IS NOT NULL
+                THEN (end_date-start_date)+1
+                ELSE 0
+            END
+        ) AS cuti,
+
+        SUM(
+            CASE
+                WHEN leave_type='IZIN'
+                AND status='APPROVED'
+                 AND approved_by IS NOT NULL
+                THEN (end_date-start_date)+1
+                ELSE 0
+            END
+        ) AS izin,
+
+        SUM(
+            CASE
+                WHEN leave_type='SAKIT'
+                AND status='APPROVED'
+                 AND approved_by IS NOT NULL
+                THEN (end_date-start_date)+1
+                ELSE 0
+            END
+        ) AS sakit
+
+  FROM leave_requests
+
+WHERE
+
+EXTRACT(MONTH FROM start_date) = $1
+
+AND
+
+EXTRACT(YEAR FROM start_date) = $2
+
+GROUP BY user_id
+
+) leave_summary
+
+ON leave_summary.user_id = u.id
+
+           WHERE
+    u.role_id = 3
+
+AND
+(
+    $4 = ''
+    OR u.department = $4
+) AND
+(
+    $5 = ''
+
+    OR LOWER(u.name)
+
+    LIKE LOWER('%' || $5 || '%')
+)
+
+          GROUP BY
+    u.id,
+    u.name,
+    u.department,
+    leave_summary.cuti,
+    leave_summary.izin,
+    leave_summary.sakit
+
+            ORDER BY
+                u.name
         `,
     [month, year, workingDays, department || "", search || ""],
   );
-
   return result;
 }
 

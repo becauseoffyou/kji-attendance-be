@@ -477,6 +477,7 @@ function getWorkingDays(year, month) {
 }
 
 exports.getAttendanceSummary = async (req, res) => {
+  console.log("SUMMARY QUERY:", req.query);
   const month = Number(req.query.month) || new Date().getMonth() + 1;
 
   const year = Number(req.query.year) || new Date().getFullYear();
@@ -484,6 +485,7 @@ exports.getAttendanceSummary = async (req, res) => {
   const department = req.query.department || "";
 
   const search = req.query.search || "";
+  const workingDays = getWorkingDays(year, month);
   try {
     const result = await pool.query(
       `

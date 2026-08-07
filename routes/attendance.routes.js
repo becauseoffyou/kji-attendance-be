@@ -13,7 +13,7 @@ router.get(
   "/summary",
   authMiddleware,
   adminMiddleware,
-  attendanceController.getAttendanceSummary,
+  attendanceController.getDashboardSummary,
 );
 
 router.get(
@@ -55,13 +55,6 @@ router.get(
   authMiddleware,
   adminMiddleware,
   attendanceController.getEmployeeOfMonth,
-);
-
-router.get(
-  "/summary",
-  authMiddleware,
-  adminMiddleware,
-  attendanceController.getDashboardSummary,
 );
 
 module.exports = router;

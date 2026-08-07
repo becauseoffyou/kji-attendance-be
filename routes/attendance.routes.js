@@ -52,6 +52,7 @@ router.post(
 
 router.get(
   "/employee-of-month",
+  authMiddleware,
   adminMiddleware,
   attendanceController.getEmployeeOfMonth,
 );

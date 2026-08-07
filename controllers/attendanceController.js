@@ -482,6 +482,15 @@ exports.getAttendanceSummary = async (req, res) => {
   const year = Number(req.query.year) || new Date().getFullYear();
 
   const workingDays = getWorkingDays(year, month);
+  const {
+    month,
+
+    year,
+
+    department,
+
+    search,
+  } = req.query;
   try {
     const result = await pool.query(
       `
@@ -616,7 +625,21 @@ GROUP BY user_id
 
 ON leave_summary.user_id = u.id
 
-            WHERE u.role_id = 3
+           WHERE
+    u.role_id = 3
+
+AND
+(
+    $4 = ''
+    OR u.department = $4
+) AND
+(
+    $5 = ''
+
+    OR LOWER(u.name)
+
+    LIKE LOWER('%' || $5 || '%')
+)
 
           GROUP BY
     u.id,
@@ -629,7 +652,7 @@ ON leave_summary.user_id = u.id
             ORDER BY
                 u.name
         `,
-      [month, year, workingDays],
+      [month, year, workingDays, department || "", search || ""],
     );
 
     res.json({

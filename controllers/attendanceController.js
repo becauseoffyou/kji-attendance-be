@@ -456,9 +456,35 @@ exports.list = async (req, res) => {
   }
 };
 
+function getWorkingDays(year, month) {
+  let total = 0;
+
+  const lastDay = new Date(year, month, 0).getDate();
+
+  for (let day = 1; day <= lastDay; day++) {
+    const date = new Date(year, month - 1, day);
+
+    const weekDay = date.getDay();
+
+    // Minggu = 0
+    // Sabtu = 6
+    if (weekDay !== 0 && weekDay !== 6) {
+      total++;
+    }
+  }
+
+  return total;
+}
+
 exports.getAttendanceSummary = async (req, res) => {
+  const month = Number(req.query.month) || new Date().getMonth() + 1;
+
+  const year = Number(req.query.year) || new Date().getFullYear();
+
+  const workingDays = getWorkingDays(year, month);
   try {
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
             SELECT
                 u.id,
                 u.name,
@@ -480,11 +506,46 @@ COALESCE(leave_summary.cuti,0) AS leave,
 
 COALESCE(leave_summary.izin,0) AS permission,
 
-COALESCE(leave_summary.sakit,0) AS sick
-            FROM users u
+COALESCE(leave_summary.sakit,0) AS sick,
 
-            LEFT JOIN attendance a
-                ON a.user_id = u.id
+(
+    $3
+    -
+    (
+        COUNT(a.id)
+        +
+        COALESCE(leave_summary.cuti,0)
+        +
+        COALESCE(leave_summary.izin,0)
+        +
+        COALESCE(leave_summary.sakit,0)
+    )
+) AS alpha,
+
+ROUND(
+
+(
+COUNT(a.id)::numeric
+
+/
+
+$3
+
+)
+
+*100
+
+,2)
+
+AS percent
+            FROM users u
+LEFT JOIN attendance a
+ON
+    a.user_id = u.id
+
+AND EXTRACT(MONTH FROM a.attendance_date) = $1
+
+AND EXTRACT(YEAR FROM a.attendance_date) = $2
                 LEFT JOIN (
 
     SELECT
@@ -518,9 +579,17 @@ COALESCE(leave_summary.sakit,0) AS sick
             END
         ) AS sakit
 
-    FROM leave_requests
+  FROM leave_requests
 
-    GROUP BY user_id
+WHERE
+
+EXTRACT(MONTH FROM start_date) = $1
+
+AND
+
+EXTRACT(YEAR FROM start_date) = $2
+
+GROUP BY user_id
 
 ) leave_summary
 
@@ -538,7 +607,9 @@ ON leave_summary.user_id = u.id
 
             ORDER BY
                 u.name
-        `);
+        `,
+      [month, year, workingDays],
+    );
 
     res.json({
       success: true,

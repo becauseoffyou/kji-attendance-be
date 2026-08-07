@@ -525,13 +525,26 @@ COALESCE(leave_summary.sakit,0) AS sick,
 ROUND(
 
 (
-COUNT(a.id)::numeric
+
+COUNT(a.id)
+
++
+
+COALESCE(leave_summary.cuti,0)
+
++
+
+COALESCE(leave_summary.izin,0)
+
++
+
+COALESCE(leave_summary.sakit,0)
+
+)::numeric
 
 /
 
 $3
-
-)
 
 *100
 

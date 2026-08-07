@@ -506,47 +506,52 @@ COALESCE(leave_summary.cuti,0) AS leave,
 
 COALESCE(leave_summary.izin,0) AS permission,
 
-COALESCE(leave_summary.sakit,0) AS sick,
+COALESCE(leave_summary.sakit,0) AS sick,(
+    COUNT(a.id)
+    +
+    COALESCE(leave_summary.cuti,0)
+    +
+    COALESCE(leave_summary.izin,0)
+    +
+    COALESCE(leave_summary.sakit,0)
+) AS attendance_total,
 
+GREATEST(
+
+0,
+
+$3
+-
 (
-    $3
-    -
-    (
-        COUNT(a.id)
-        +
-        COALESCE(leave_summary.cuti,0)
-        +
-        COALESCE(leave_summary.izin,0)
-        +
-        COALESCE(leave_summary.sakit,0)
-    )
+    COUNT(a.id)
+    +
+    COALESCE(leave_summary.cuti,0)
+    +
+    COALESCE(leave_summary.izin,0)
+    +
+    COALESCE(leave_summary.sakit,0)
+)
+
 ) AS alpha,
 
 ROUND(
 
 (
-
+(
 COUNT(a.id)
-
 +
-
 COALESCE(leave_summary.cuti,0)
-
 +
-
 COALESCE(leave_summary.izin,0)
-
 +
-
 COALESCE(leave_summary.sakit,0)
-
 )::numeric
 
 /
 
-$3
+NULLIF($3,0)
 
-*100
+)*100
 
 ,2)
 
@@ -569,6 +574,7 @@ AND EXTRACT(YEAR FROM a.attendance_date) = $2
             CASE
                 WHEN leave_type='CUTI'
                 AND status='APPROVED'
+                 AND approved_by IS NOT NULL
                 THEN (end_date-start_date)+1
                 ELSE 0
             END
@@ -578,6 +584,7 @@ AND EXTRACT(YEAR FROM a.attendance_date) = $2
             CASE
                 WHEN leave_type='IZIN'
                 AND status='APPROVED'
+                 AND approved_by IS NOT NULL
                 THEN (end_date-start_date)+1
                 ELSE 0
             END
@@ -587,6 +594,7 @@ AND EXTRACT(YEAR FROM a.attendance_date) = $2
             CASE
                 WHEN leave_type='SAKIT'
                 AND status='APPROVED'
+                 AND approved_by IS NOT NULL
                 THEN (end_date-start_date)+1
                 ELSE 0
             END

@@ -50,4 +50,10 @@ router.post(
   attendanceController.checkOut,
 );
 
+router.get(
+  "/employee-of-month",
+  adminMiddleware,
+  attendanceController.getEmployeeOfMonth,
+);
+
 module.exports = router;

@@ -125,3 +125,189 @@ WHERE u.id=$1
     });
   }
 };
+
+exports.createEmployee = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    const {
+      nik,
+      name,
+      email,
+      phone,
+      department,
+      position,
+      join_date,
+      address,
+      employee_type,
+      contract_start_date,
+      contract_end_date,
+      office_location_id,
+      supervisor_id,
+    } = req.body;
+
+    // =========================
+    // VALIDASI
+    // =========================
+
+    if (!nik || !name || !email || !department) {
+      return res.status(400).json({
+        success: false,
+        message: "NIK, nama, email, dan departemen wajib diisi",
+      });
+    }
+
+    if (!/^\d{16}$/.test(nik)) {
+      return res.status(400).json({
+        success: false,
+        message: "NIK harus terdiri dari 16 digit",
+      });
+    }
+
+    // =========================
+    // CEK NIK / EMAIL
+    // =========================
+
+    const existing = await pool.query(
+      `
+            SELECT id
+            FROM users
+            WHERE nik = $1
+               OR email = $2
+            LIMIT 1
+            `,
+      [nik, email],
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "NIK atau email sudah terdaftar",
+      });
+    }
+
+    // =========================
+    // PASSWORD DEFAULT
+    // kji + 4 digit terakhir NIK
+    // =========================
+
+    const defaultPassword = `kji${nik.slice(-4)}`;
+
+    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+
+    // =========================
+    // FILE
+    // =========================
+
+    const photo = req.files?.photo?.[0];
+    const ktp = req.files?.ktp?.[0];
+
+    const photoPath = photo ? `/uploads/photos/${photo.filename}` : null;
+
+    const ktpPath = ktp ? `/uploads/ktp/${ktp.filename}` : null;
+
+    // =========================
+    // TRANSACTION
+    // =========================
+
+    await client.query("BEGIN");
+
+    const result = await client.query(
+      `
+            INSERT INTO users (
+                role_id,
+                nik,
+                name,
+                email,
+                password,
+                phone,
+                department,
+                position,
+                photo,
+                ktp,
+                join_date,
+                address,
+                status,
+                employee_type,
+                contract_start_date,
+                contract_end_date,
+                office_location_id,
+                supervisor_id
+            )
+            VALUES (
+                3,
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                $8,
+                $9,
+                $10,
+                $11,
+                true,
+                $12,
+                $13,
+                $14,
+                $15,
+                $16
+            )
+            RETURNING
+                id,
+                nik,
+                name,
+                email,
+                phone,
+                department,
+                position,
+                photo,
+                ktp,
+                join_date,
+                address,
+                status,
+                employee_type,
+                contract_start_date,
+                contract_end_date
+            `,
+      [
+        nik,
+        name,
+        email,
+        hashedPassword,
+        phone || null,
+        department,
+        position || null,
+        photoPath,
+        ktpPath,
+        join_date || null,
+        address || null,
+        employee_type || "TETAP",
+        contract_start_date || null,
+        contract_end_date || null,
+        office_location_id || null,
+        supervisor_id || null,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    return res.status(201).json({
+      success: true,
+      message: "Karyawan berhasil dibuat",
+      data: result.rows[0],
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+
+    console.error("CREATE EMPLOYEE ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal membuat karyawan",
+    });
+  } finally {
+    client.release();
+  }
+};

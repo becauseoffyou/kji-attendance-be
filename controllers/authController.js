@@ -311,3 +311,42 @@ exports.createEmployee = async (req, res) => {
     client.release();
   }
 };
+
+exports.getEmployees = async (req, res) => {
+  try {
+    const result = await pool.query(`
+            SELECT
+                u.id,
+                u.nik,
+                u.name,
+                u.email,
+                u.phone,
+                u.department,
+                u.position,
+                u.photo,
+                u.status,
+                u.employee_type,
+                u.contract_start_date,
+                u.contract_end_date,
+                u.join_date,
+                u.address,
+                u.office_location_id,
+                u.supervisor_id
+            FROM users u
+            WHERE u.role_id = 3
+            ORDER BY u.name ASC
+        `);
+
+    return res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (err) {
+    console.error("GET EMPLOYEES ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data karyawan",
+    });
+  }
+};

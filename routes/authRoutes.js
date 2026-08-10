@@ -28,4 +28,11 @@ router.post(
   authController.createEmployee,
 );
 
+router.get(
+  "/employees",
+  authMiddleware,
+  adminMiddleware,
+  authController.getEmployees,
+);
+
 module.exports = router;

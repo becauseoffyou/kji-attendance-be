@@ -57,4 +57,10 @@ router.get(
   attendanceController.getEmployeeOfMonth,
 );
 
+router.get(
+  "/attendance-summary",
+  authMiddleware,
+  adminMiddleware,
+  attendanceController.getAttendanceSummary,
+);
 module.exports = router;

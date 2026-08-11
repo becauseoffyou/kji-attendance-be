@@ -51,4 +51,11 @@ router.put(
   authController.updateEmployee,
 );
 
+router.patch(
+  "/employees/:id/deactivate",
+  authMiddleware,
+  adminMiddleware,
+  authController.deactivateEmployee,
+);
+
 module.exports = router;

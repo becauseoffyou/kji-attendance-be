@@ -5,7 +5,8 @@ const fs = require("fs");
 // Folder upload
 const photoDir = path.join(__dirname, "../uploads/photos");
 const ktpDir = path.join(__dirname, "../uploads/ktp");
-
+console.log("PHOTO DIR:", photoDir);
+console.log("KTP DIR:", ktpDir);
 // Buat folder otomatis kalau belum ada
 fs.mkdirSync(photoDir, { recursive: true });
 fs.mkdirSync(ktpDir, { recursive: true });

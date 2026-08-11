@@ -331,7 +331,8 @@ exports.getEmployees = async (req, res) => {
                 u.join_date,
                 u.address,
                 u.office_location_id,
-                u.supervisor_id
+                u.supervisor_id,
+                u.ktp
             FROM users u
             WHERE u.role_id = 3
             ORDER BY u.name ASC

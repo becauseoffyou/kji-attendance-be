@@ -771,7 +771,9 @@ exports.getDailyAttendance = async (req, res) => {
 
     a.check_in_lat,
 
-    a.check_in_lng
+    a.check_in_lng,
+    a.check_out_lat,
+    a.check_out_lng
 
 FROM users u
 

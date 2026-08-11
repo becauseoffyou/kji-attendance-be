@@ -34,4 +34,21 @@ router.get(
   authController.getEmployees,
 );
 
+router.put(
+  "/employees/:id",
+  authMiddleware,
+  adminMiddleware,
+  uploadEmployee.fields([
+    {
+      name: "photo",
+      maxCount: 1,
+    },
+    {
+      name: "ktp",
+      maxCount: 1,
+    },
+  ]),
+  authController.updateEmployee,
+);
+
 module.exports = router;

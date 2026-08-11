@@ -351,3 +351,117 @@ exports.getEmployees = async (req, res) => {
     });
   }
 };
+
+exports.updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      nik,
+      name,
+      email,
+      phone,
+      department,
+      position,
+      join_date,
+      address,
+      employee_type,
+      contract_start_date,
+      contract_end_date,
+      office_location_id,
+      supervisor_id,
+    } = req.body;
+
+    const photo = req.files?.photo?.[0];
+    const ktp = req.files?.ktp?.[0];
+
+    const photoPath = photo ? `/uploads/photos/${photo.filename}` : null;
+
+    const ktpPath = ktp ? `/uploads/ktp/${ktp.filename}` : null;
+
+    const result = await pool.query(
+      `
+            UPDATE users
+            SET
+                nik = $1,
+                name = $2,
+                email = $3,
+                phone = $4,
+                department = $5,
+                position = $6,
+                join_date = $7,
+                address = $8,
+                employee_type = $9,
+                contract_start_date = $10,
+                contract_end_date = $11,
+                office_location_id = $12,
+                supervisor_id = $13,
+
+                photo = COALESCE($14, photo),
+                ktp = COALESCE($15, ktp),
+
+                updated_at = NOW()
+
+            WHERE id = $16
+              AND role_id = 3
+
+            RETURNING
+                id,
+                nik,
+                name,
+                email,
+                phone,
+                department,
+                position,
+                join_date,
+                address,
+                employee_type,
+                contract_start_date,
+                contract_end_date,
+                office_location_id,
+                supervisor_id,
+                photo,
+                ktp,
+                status
+            `,
+      [
+        nik,
+        name,
+        email,
+        phone,
+        department,
+        position,
+        join_date || null,
+        address,
+        employee_type,
+        employee_type === "KONTRAK" ? contract_start_date || null : null,
+        employee_type === "KONTRAK" ? contract_end_date || null : null,
+        office_location_id || null,
+        supervisor_id || null,
+        photoPath,
+        ktpPath,
+        id,
+      ],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Karyawan tidak ditemukan",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Data karyawan berhasil diperbarui",
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error("UPDATE EMPLOYEE ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memperbarui data karyawan",
+    });
+  }
+};

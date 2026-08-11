@@ -508,3 +508,46 @@ exports.deactivateEmployee = async (req, res) => {
     });
   }
 };
+
+exports.activateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await pool.query(
+      `
+            UPDATE users
+            SET
+                status = true,
+                updated_at = NOW()
+            WHERE id = $1
+              AND role_id = 3
+            RETURNING
+                id,
+                name,
+                email,
+                status
+            `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Karyawan tidak ditemukan",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Karyawan berhasil diaktifkan",
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error("ACTIVATE EMPLOYEE ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengaktifkan karyawan",
+    });
+  }
+};

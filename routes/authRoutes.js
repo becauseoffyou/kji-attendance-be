@@ -58,4 +58,11 @@ router.patch(
   authController.deactivateEmployee,
 );
 
+router.patch(
+  "/employees/:id/activate",
+  authMiddleware,
+  adminMiddleware,
+  authController.activateEmployee,
+);
+
 module.exports = router;

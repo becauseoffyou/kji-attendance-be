@@ -5,8 +5,31 @@ const fs = require("fs");
 // Folder upload
 const photoDir = path.join(__dirname, "../uploads/photos");
 const ktpDir = path.join(__dirname, "../uploads/ktp");
-console.log("PHOTO DIR:", photoDir);
-console.log("KTP DIR:", ktpDir);
+const employeeStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (file.fieldname === "photo") {
+      cb(null, photoDir);
+      return;
+    }
+
+    if (file.fieldname === "ktp") {
+      cb(null, ktpDir);
+      return;
+    }
+
+    cb(new Error("Field upload tidak dikenal"));
+  },
+
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+
+    const prefix = file.fieldname === "photo" ? "photo" : "ktp";
+
+    const filename = `${prefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+    cb(null, filename);
+  },
+});
 // Buat folder otomatis kalau belum ada
 fs.mkdirSync(photoDir, { recursive: true });
 fs.mkdirSync(ktpDir, { recursive: true });
@@ -69,8 +92,15 @@ const uploadKtp = multer({
     fileSize: 5 * 1024 * 1024,
   },
 });
-
+const uploadEmployee = multer({
+  storage: employeeStorage,
+  fileFilter: imageFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+});
 module.exports = {
   uploadPhoto,
+  uploadEmployee,
   uploadKtp,
 };

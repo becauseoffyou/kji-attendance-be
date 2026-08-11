@@ -2,6 +2,12 @@ const pool = require("../config/db");
 
 exports.getDashboard = async (req, res) => {
   try {
+    const allowedPeriods = [7, 14, 30];
+
+    const period = allowedPeriods.includes(Number(req.query.period))
+      ? Number(req.query.period)
+      : 7;
+
     const totalEmployee = await pool.query(`
             SELECT COUNT(*) AS total
             FROM users
@@ -58,24 +64,27 @@ WHERE a.attendance_date = CURRENT_DATE
 ORDER BY a.check_in ASC;
 `);
 
-    const attendanceChart = await pool.query(`
-WITH days AS (
-    SELECT generate_series(
-        CURRENT_DATE - INTERVAL '6 days',
-        CURRENT_DATE,
-        INTERVAL '1 day'
-    )::date AS attendance_date
-)
+    const attendanceChart = await pool.query(
+      `
+    WITH days AS (
+        SELECT generate_series(
+            CURRENT_DATE - ($1 - 1) * INTERVAL '1 day',
+            CURRENT_DATE,
+            INTERVAL '1 day'
+        )::date AS attendance_date
+    )
 
-SELECT
-    d.attendance_date,
-    COALESCE(COUNT(a.id), 0) AS total
-FROM days d
-LEFT JOIN attendance a
-    ON a.attendance_date = d.attendance_date
-GROUP BY d.attendance_date
-ORDER BY d.attendance_date;
-`);
+    SELECT
+        d.attendance_date,
+        COALESCE(COUNT(a.id), 0) AS total
+    FROM days d
+    LEFT JOIN attendance a
+        ON a.attendance_date = d.attendance_date
+    GROUP BY d.attendance_date
+    ORDER BY d.attendance_date;
+    `,
+      [period],
+    );
     const chart = attendanceChart.rows.map((item) => ({
       day: new Date(item.attendance_date).toLocaleDateString("id-ID", {
         weekday: "short",

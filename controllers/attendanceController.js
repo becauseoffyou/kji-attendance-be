@@ -490,7 +490,7 @@ async function getSummaryData(
                 u.name,
                 u.department,
 
-                COUNT(a.id) AS present,
+               COUNT(DISTINCT a.attendance_date) AS present,
 
                 SUM(
                     CASE
@@ -507,7 +507,7 @@ COALESCE(leave_summary.cuti,0) AS leave,
 COALESCE(leave_summary.izin,0) AS permission,
 
 COALESCE(leave_summary.sakit,0) AS sick,(
-    COUNT(a.id)
+   COUNT(DISTINCT a.attendance_date)
     +
     COALESCE(leave_summary.cuti,0)
     +
@@ -523,8 +523,8 @@ GREATEST(
 $3
 -
 (
-    COUNT(a.id)
-    +
+    COUNT(DISTINCT a.attendance_date)
+        +
     COALESCE(leave_summary.cuti,0)
     +
     COALESCE(leave_summary.izin,0)

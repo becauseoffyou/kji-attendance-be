@@ -132,7 +132,10 @@ exports.leaveRequests = async (req, res) => {
     const params = [supervisorId];
 
     if (status !== "ALL") {
-      sql += ` AND lr.status = $2`;
+      sql += `
+                AND lr.status = $2
+            `;
+
       params.push(status);
     }
 
@@ -152,7 +155,12 @@ exports.leaveRequests = async (req, res) => {
 
                 NULL AS attachment,
 
-                aer.status,
+                CASE
+                    WHEN aer.status = 'PENDING'
+                        THEN 'PENDING_SUPERVISOR'
+                    ELSE aer.status
+                END AS status,
+
                 aer.created_at,
                 aer.approved_at,
 
@@ -180,7 +188,19 @@ exports.leaveRequests = async (req, res) => {
         `;
 
     if (status !== "ALL") {
-      sql += ` AND aer.status = $2`;
+      sql += `
+                AND (
+                    (
+                        $2 = 'PENDING_SUPERVISOR'
+                        AND aer.status = 'PENDING'
+                    )
+                    OR
+                    (
+                        $2 != 'PENDING_SUPERVISOR'
+                        AND aer.status = $2
+                    )
+                )
+            `;
     }
 
     sql += `
@@ -196,16 +216,17 @@ exports.leaveRequests = async (req, res) => {
     const summary = await pool.query(
       `
             SELECT
+
                 COUNT(*) FILTER (
-                    WHERE status = 'PENDING_SUPERVISOR'
+                    WHERE request_status = 'PENDING'
                 ) AS pending,
 
                 COUNT(*) FILTER (
-                    WHERE status = 'APPROVED'
+                    WHERE request_status = 'APPROVED'
                 ) AS approved,
 
                 COUNT(*) FILTER (
-                    WHERE status = 'REJECTED'
+                    WHERE request_status = 'REJECTED'
                 ) AS rejected,
 
                 COUNT(*) AS total
@@ -213,7 +234,7 @@ exports.leaveRequests = async (req, res) => {
             FROM (
 
                 SELECT
-                    lr.status
+                    lr.status AS request_status
 
                 FROM leave_requests lr
 
@@ -228,7 +249,7 @@ exports.leaveRequests = async (req, res) => {
 
 
                 SELECT
-                    aer.status
+                    aer.status AS request_status
 
                 FROM attendance_edit_requests aer
 

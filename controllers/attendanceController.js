@@ -950,3 +950,129 @@ exports.getDashboardSummary = async (req, res) => {
     });
   }
 };
+
+exports.createEditRequest = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { attendance_id, new_check_in, new_check_out, reason } = req.body;
+
+    // Validasi
+    if (!attendance_id) {
+      return res.status(400).json({
+        success: false,
+        message: "ID absensi wajib diisi.",
+      });
+    }
+
+    if (!new_check_in && !new_check_out) {
+      return res.status(400).json({
+        success: false,
+        message: "Jam masuk atau jam pulang wajib diisi.",
+      });
+    }
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Alasan perubahan wajib diisi.",
+      });
+    }
+
+    // Pastikan absensi memang milik user yang login
+    const attendanceResult = await pool.query(
+      `
+            SELECT
+                id,
+                user_id,
+                check_in,
+                check_out,
+                attendance_date
+            FROM attendance
+            WHERE id = $1
+              AND user_id = $2
+            `,
+      [attendance_id, userId],
+    );
+
+    if (attendanceResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Data absensi tidak ditemukan.",
+      });
+    }
+
+    const attendance = attendanceResult.rows[0];
+
+    // Cek apakah masih ada pengajuan yang sedang menunggu
+    const pendingResult = await pool.query(
+      `
+            SELECT id
+            FROM attendance_edit_requests
+            WHERE attendance_id = $1
+              AND user_id = $2
+              AND status = 'PENDING'
+            `,
+      [attendance_id, userId],
+    );
+
+    if (pendingResult.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Pengajuan perubahan untuk absensi ini masih menunggu approval.",
+      });
+    }
+
+    // Simpan pengajuan
+    const result = await pool.query(
+      `
+            INSERT INTO attendance_edit_requests
+            (
+                attendance_id,
+                user_id,
+                old_check_in,
+                new_check_in,
+                old_check_out,
+                new_check_out,
+                reason,
+                status
+            )
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5,
+                $6,
+                $7,
+                'PENDING'
+            )
+            RETURNING *
+            `,
+      [
+        attendance.id,
+        userId,
+        attendance.check_in,
+        new_check_in || null,
+        attendance.check_out,
+        new_check_out || null,
+        reason.trim(),
+      ],
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Pengajuan perubahan absensi berhasil dikirim.",
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};

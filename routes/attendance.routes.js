@@ -50,6 +50,12 @@ router.post(
   attendanceController.checkOut,
 );
 
+router.post(
+  "/edit-request",
+  authMiddleware,
+  attendanceController.createEditRequest,
+);
+
 router.get(
   "/employee-of-month",
   authMiddleware,

@@ -688,37 +688,30 @@ exports.getEmployeeAttendance = async (req, res) => {
   try {
     const { id } = req.params;
 
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+
     const result = await pool.query(
       `
             SELECT
-
                 attendance_date,
-
                 check_in,
-
                 check_out,
-
                 status,
-
                 is_late,
-
                 late_minutes,
-
                 attendance_type
-
             FROM attendance
-
             WHERE user_id = $1
-
-           ORDER BY
-    check_in DESC
-        `,
-      [id],
+              AND EXTRACT(MONTH FROM attendance_date) = $2
+              AND EXTRACT(YEAR FROM attendance_date) = $3
+            ORDER BY check_in DESC
+            `,
+      [id, month, year],
     );
 
     res.json({
       success: true,
-
       data: result.rows,
     });
   } catch (err) {
@@ -726,7 +719,6 @@ exports.getEmployeeAttendance = async (req, res) => {
 
     res.status(500).json({
       success: false,
-
       message: err.message,
     });
   }

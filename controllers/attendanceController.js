@@ -79,53 +79,93 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-      SELECT
-          id,
-          attendance_date,
+            SELECT
+                a.id,
+                a.attendance_date,
 
-          check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
-          check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
+                a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
+                a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
 
-          status,
-          attendance_type,
-          notes,
+                a.status,
+                a.attendance_type,
+                a.notes,
 
-          CASE
-              WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time <= TIME '09:00:00'
-              THEN 'Tepat Waktu'
-              ELSE 'Terlambat'
-          END AS attendance_status,
+                -- =========================
+                -- EDIT REQUEST
+                -- =========================
 
-          CASE
-              WHEN (check_in AT TIME ZONE 'Asia/Jakarta')::time > TIME '09:00:00'
-              THEN FLOOR(
-                  EXTRACT(
-                      EPOCH FROM (
-                          (check_in AT TIME ZONE 'Asia/Jakarta')::time - TIME '09:00:00'
-                      )
-                  ) / 60
-              )::int
-              ELSE 0
-          END AS late_minutes,
+                aer.id AS edit_request_id,
+                aer.status AS edit_request_status,
+                aer.reason AS edit_request_reason,
+                aer.new_check_in AS edit_new_check_in,
+                aer.new_check_out AS edit_new_check_out,
+                aer.rejection_reason AS edit_rejection_reason,
 
-          CASE
-              WHEN check_out IS NOT NULL THEN
-                  CONCAT(
-                      EXTRACT(HOUR FROM (check_out - check_in))::int,
-                      'j ',
-                      EXTRACT(MINUTE FROM (check_out - check_in))::int,
-                      'm'
-                  )
-              ELSE
-                  '-'
-          END AS working_hours
+                -- =========================
+                -- STATUS ABSENSI
+                -- =========================
 
-      FROM attendance
+                CASE
+                    WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
+                        <= TIME '09:00:00'
+                    THEN 'Tepat Waktu'
 
-      WHERE user_id = $1
+                    ELSE 'Terlambat'
+                END AS attendance_status,
 
-      ORDER BY attendance_date DESC
-      `,
+                -- =========================
+                -- MENIT TERLAMBAT
+                -- =========================
+
+                CASE
+                    WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
+                        > TIME '09:00:00'
+
+                    THEN FLOOR(
+                        EXTRACT(
+                            EPOCH FROM (
+                                (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
+                                - TIME '09:00:00'
+                            )
+                        ) / 60
+                    )::int
+
+                    ELSE 0
+                END AS late_minutes,
+
+                -- =========================
+                -- JAM KERJA
+                -- =========================
+
+                CASE
+                    WHEN a.check_out IS NOT NULL THEN
+                        CONCAT(
+                            EXTRACT(
+                                HOUR FROM
+                                (a.check_out - a.check_in)
+                            )::int,
+                            'j ',
+                            EXTRACT(
+                                MINUTE FROM
+                                (a.check_out - a.check_in)
+                            )::int,
+                            'm'
+                        )
+
+                    ELSE '-'
+
+                END AS working_hours
+
+            FROM attendance a
+
+            LEFT JOIN attendance_edit_requests aer
+                ON aer.attendance_id = a.id
+                AND aer.user_id = a.user_id
+
+            WHERE a.user_id = $1
+
+            ORDER BY a.attendance_date DESC
+            `,
       [userId],
     );
 

@@ -1047,20 +1047,27 @@ exports.createEditRequest = async (req, res) => {
     }
 
     // =========================
-    // AMBIL ABSENSI
+    // AMBIL ABSENSI + SUPERVISOR
     // =========================
 
     const attendanceResult = await pool.query(
       `
             SELECT
-                id,
-                user_id,
-                check_in,
-                check_out,
-                attendance_date
-            FROM attendance
-            WHERE id = $1
-              AND user_id = $2
+                a.id,
+                a.user_id,
+                a.check_in,
+                a.check_out,
+                a.attendance_date,
+
+                u.supervisor_id
+
+            FROM attendance a
+
+            JOIN users u
+                ON u.id = a.user_id
+
+            WHERE a.id = $1
+              AND a.user_id = $2
             `,
       [attendance_id, userId],
     );
@@ -1075,16 +1082,30 @@ exports.createEditRequest = async (req, res) => {
     const attendance = attendanceResult.rows[0];
 
     // =========================
+    // CEK SUPERVISOR
+    // =========================
+
+    if (!attendance.supervisor_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Atasan untuk karyawan ini belum diatur.",
+      });
+    }
+
+    // =========================
     // CEK REQUEST PENDING
     // =========================
 
     const pendingResult = await pool.query(
       `
             SELECT id
+
             FROM attendance_edit_requests
+
             WHERE attendance_id = $1
               AND user_id = $2
               AND status = 'PENDING_SUPERVISOR'
+
             LIMIT 1
             `,
       [attendance_id, userId],
@@ -1099,16 +1120,19 @@ exports.createEditRequest = async (req, res) => {
     }
 
     // =========================
-    // CEK SUDAH PERNAH APPROVED
+    // CEK SUDAH APPROVED
     // =========================
 
     const approvedResult = await pool.query(
       `
             SELECT id
+
             FROM attendance_edit_requests
+
             WHERE attendance_id = $1
               AND user_id = $2
               AND status = 'APPROVED'
+
             LIMIT 1
             `,
       [attendance_id, userId],
@@ -1123,7 +1147,7 @@ exports.createEditRequest = async (req, res) => {
     }
 
     // =========================
-    // INSERT REQUEST
+    // SIMPAN REQUEST
     // =========================
 
     const result = await pool.query(
@@ -1139,6 +1163,7 @@ exports.createEditRequest = async (req, res) => {
                 reason,
                 status
             )
+
             VALUES
             (
                 $1,
@@ -1150,6 +1175,7 @@ exports.createEditRequest = async (req, res) => {
                 $7,
                 'PENDING_SUPERVISOR'
             )
+
             RETURNING *
             `,
       [
@@ -1163,10 +1189,49 @@ exports.createEditRequest = async (req, res) => {
       ],
     );
 
+    const editRequest = result.rows[0];
+
+    // =========================
+    // NOTIFICATION KE ATASAN
+    // =========================
+
+    await pool.query(
+      `
+            INSERT INTO notifications
+            (
+                user_id,
+                title,
+                message,
+                type,
+                reference_id
+            )
+
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5
+            )
+            `,
+      [
+        attendance.supervisor_id,
+
+        "Perubahan Absensi",
+
+        "Ada pengajuan perubahan absensi yang membutuhkan persetujuan Anda.",
+
+        "ATTENDANCE_EDIT_PENDING",
+
+        editRequest.id,
+      ],
+    );
+
     return res.status(201).json({
       success: true,
       message: "Pengajuan perubahan absensi berhasil dikirim.",
-      data: result.rows[0],
+      data: editRequest,
     });
   } catch (err) {
     console.error(err);

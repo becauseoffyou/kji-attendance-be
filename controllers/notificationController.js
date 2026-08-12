@@ -33,13 +33,20 @@ exports.readPendingLeave = async (req, res) => {
   try {
     await pool.query(
       `
-      UPDATE notifications
-      SET is_read = true
-      WHERE
-        user_id = $1
-        AND type = 'LEAVE_PENDING'
-        AND is_read = false
-      `,
+            UPDATE notifications
+
+            SET is_read = true
+
+            WHERE
+                user_id = $1
+
+                AND type IN (
+                    'LEAVE_PENDING',
+                    'ATTENDANCE_EDIT_PENDING'
+                )
+
+                AND is_read = false
+            `,
       [req.user.id],
     );
 

@@ -714,11 +714,17 @@ exports.approveAttendanceEdit = async (req, res) => {
 
     const supervisorId = req.user.id;
 
+    // =========================
+    // AMBIL REQUEST
+    // =========================
+
     const result = await client.query(
       `
             SELECT
                 aer.*,
                 a.attendance_date,
+                a.check_in,
+                a.check_out,
                 u.supervisor_id,
                 u.name
 
@@ -748,8 +754,11 @@ exports.approveAttendanceEdit = async (req, res) => {
 
     const request = result.rows[0];
 
-    // Pastikan yang approve adalah atasannya
-    if (request.supervisor_id !== supervisorId) {
+    // =========================
+    // CEK SUPERVISOR
+    // =========================
+
+    if (Number(request.supervisor_id) !== Number(supervisorId)) {
       await client.query("ROLLBACK");
 
       return res.status(403).json({
@@ -758,7 +767,10 @@ exports.approveAttendanceEdit = async (req, res) => {
       });
     }
 
-    // Pastikan masih pending
+    // =========================
+    // CEK STATUS
+    // =========================
+
     if (request.status !== "PENDING_SUPERVISOR") {
       await client.query("ROLLBACK");
 
@@ -768,23 +780,69 @@ exports.approveAttendanceEdit = async (req, res) => {
       });
     }
 
-    // Update attendance
+    // =========================
+    // JAM FINAL
+    // =========================
+    // Kalau yang diubah hanya check-in,
+    // check-out lama tetap digunakan.
+    //
+    // Kalau yang diubah hanya check-out,
+    // check-in lama tetap digunakan.
+
+    const finalCheckIn =
+      request.new_check_in || request.old_check_in || request.check_in;
+
+    const finalCheckOut =
+      request.new_check_out || request.old_check_out || request.check_out;
+
+    // =========================
+    // HITUNG KETERLAMBATAN
+    // =========================
+
+    let isLate = false;
+    let lateMinutes = 0;
+
+    if (finalCheckIn) {
+      const checkInDate = new Date(finalCheckIn);
+
+      const officeStart = new Date(checkInDate);
+
+      officeStart.setHours(9, 0, 0, 0);
+
+      if (checkInDate > officeStart) {
+        isLate = true;
+
+        lateMinutes = Math.floor((checkInDate - officeStart) / 60000);
+      }
+    }
+
+    // =========================
+    // UPDATE ATTENDANCE
+    // =========================
+
     await client.query(
       `
             UPDATE attendance
-            SET
-                check_in = COALESCE($1, check_in),
-                check_out = COALESCE($2, check_out)
 
-            WHERE id = $3
+            SET
+                check_in = $1,
+                check_out = $2,
+                is_late = $3,
+                late_minutes = $4
+
+            WHERE id = $5
             `,
-      [request.new_check_in, request.new_check_out, request.attendance_id],
+      [finalCheckIn, finalCheckOut, isLate, lateMinutes, request.attendance_id],
     );
 
-    // Update request
+    // =========================
+    // UPDATE REQUEST
+    // =========================
+
     await client.query(
       `
             UPDATE attendance_edit_requests
+
             SET
                 status = 'APPROVED',
                 approved_by = $1,
@@ -797,7 +855,10 @@ exports.approveAttendanceEdit = async (req, res) => {
       [supervisorId, id],
     );
 
-    // Notification
+    // =========================
+    // NOTIFICATION KE KARYAWAN
+    // =========================
+
     await client.query(
       `
             INSERT INTO notifications
@@ -808,6 +869,7 @@ exports.approveAttendanceEdit = async (req, res) => {
                 type,
                 reference_id
             )
+
             VALUES
             (
                 $1,
@@ -825,6 +887,10 @@ exports.approveAttendanceEdit = async (req, res) => {
         request.id,
       ],
     );
+
+    // =========================
+    // COMMIT
+    // =========================
 
     await client.query("COMMIT");
 

@@ -83,31 +83,44 @@ exports.history = async (req, res) => {
                 a.id,
                 a.attendance_date,
 
-                a.check_in AT TIME ZONE 'Asia/Jakarta' AS check_in,
-                a.check_out AT TIME ZONE 'Asia/Jakarta' AS check_out,
+                a.check_in AT TIME ZONE 'Asia/Jakarta'
+                    AS check_in,
+
+                a.check_out AT TIME ZONE 'Asia/Jakarta'
+                    AS check_out,
 
                 a.status,
                 a.attendance_type,
                 a.notes,
 
                 -- =========================
-                -- EDIT REQUEST
+                -- EDIT REQUEST TERAKHIR
                 -- =========================
 
                 aer.id AS edit_request_id,
+
                 aer.status AS edit_request_status,
+
                 aer.reason AS edit_request_reason,
+
                 aer.new_check_in AS edit_new_check_in,
+
                 aer.new_check_out AS edit_new_check_out,
-                aer.rejection_reason AS edit_rejection_reason,
+
+                aer.rejection_reason
+                    AS edit_rejection_reason,
 
                 -- =========================
                 -- STATUS ABSENSI
                 -- =========================
 
                 CASE
-                    WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
-                        <= TIME '09:00:00'
+                    WHEN
+                        (
+                            a.check_in
+                            AT TIME ZONE 'Asia/Jakarta'
+                        )::time <= TIME '09:00:00'
+
                     THEN 'Tepat Waktu'
 
                     ELSE 'Terlambat'
@@ -118,13 +131,19 @@ exports.history = async (req, res) => {
                 -- =========================
 
                 CASE
-                    WHEN (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
-                        > TIME '09:00:00'
+                    WHEN
+                        (
+                            a.check_in
+                            AT TIME ZONE 'Asia/Jakarta'
+                        )::time > TIME '09:00:00'
 
                     THEN FLOOR(
                         EXTRACT(
                             EPOCH FROM (
-                                (a.check_in AT TIME ZONE 'Asia/Jakarta')::time
+                                (
+                                    a.check_in
+                                    AT TIME ZONE 'Asia/Jakarta'
+                                )::time
                                 - TIME '09:00:00'
                             )
                         ) / 60
@@ -138,29 +157,35 @@ exports.history = async (req, res) => {
                 -- =========================
 
                 CASE
-                    WHEN a.check_out IS NOT NULL THEN
-                        CONCAT(
-                            EXTRACT(
-                                HOUR FROM
-                                (a.check_out - a.check_in)
-                            )::int,
-                            'j ',
-                            EXTRACT(
-                                MINUTE FROM
-                                (a.check_out - a.check_in)
-                            )::int,
-                            'm'
-                        )
+                    WHEN a.check_out IS NOT NULL
+
+                    THEN CONCAT(
+                        EXTRACT(
+                            HOUR FROM
+                            (a.check_out - a.check_in)
+                        )::int,
+                        'j ',
+                        EXTRACT(
+                            MINUTE FROM
+                            (a.check_out - a.check_in)
+                        )::int,
+                        'm'
+                    )
 
                     ELSE '-'
-
                 END AS working_hours
 
             FROM attendance a
 
-            LEFT JOIN attendance_edit_requests aer
-                ON aer.attendance_id = a.id
-                AND aer.user_id = a.user_id
+            LEFT JOIN LATERAL (
+                SELECT
+                    aer.*
+                FROM attendance_edit_requests aer
+                WHERE aer.attendance_id = a.id
+                  AND aer.user_id = a.user_id
+                ORDER BY aer.created_at DESC
+                LIMIT 1
+            ) aer ON true
 
             WHERE a.user_id = $1
 
@@ -182,7 +207,6 @@ exports.history = async (req, res) => {
     });
   }
 };
-
 /*
 |--------------------------------------------------------------------------
 | CHART
@@ -997,7 +1021,10 @@ exports.createEditRequest = async (req, res) => {
 
     const { attendance_id, new_check_in, new_check_out, reason } = req.body;
 
-    // Validasi
+    // =========================
+    // VALIDASI
+    // =========================
+
     if (!attendance_id) {
       return res.status(400).json({
         success: false,
@@ -1019,7 +1046,10 @@ exports.createEditRequest = async (req, res) => {
       });
     }
 
-    // Pastikan absensi memang milik user yang login
+    // =========================
+    // AMBIL ABSENSI
+    // =========================
+
     const attendanceResult = await pool.query(
       `
             SELECT
@@ -1044,7 +1074,10 @@ exports.createEditRequest = async (req, res) => {
 
     const attendance = attendanceResult.rows[0];
 
-    // Cek apakah masih ada pengajuan yang sedang menunggu
+    // =========================
+    // CEK REQUEST PENDING
+    // =========================
+
     const pendingResult = await pool.query(
       `
             SELECT id
@@ -1052,6 +1085,7 @@ exports.createEditRequest = async (req, res) => {
             WHERE attendance_id = $1
               AND user_id = $2
               AND status = 'PENDING_SUPERVISOR'
+            LIMIT 1
             `,
       [attendance_id, userId],
     );
@@ -1064,16 +1098,19 @@ exports.createEditRequest = async (req, res) => {
       });
     }
 
-    // Cek apakah absensi ini sudah pernah dikoreksi
+    // =========================
+    // CEK SUDAH PERNAH APPROVED
+    // =========================
+
     const approvedResult = await pool.query(
       `
-    SELECT id
-    FROM attendance_edit_requests
-    WHERE attendance_id = $1
-      AND user_id = $2
-      AND status = 'APPROVED'
-    LIMIT 1
-    `,
+            SELECT id
+            FROM attendance_edit_requests
+            WHERE attendance_id = $1
+              AND user_id = $2
+              AND status = 'APPROVED'
+            LIMIT 1
+            `,
       [attendance_id, userId],
     );
 
@@ -1085,7 +1122,10 @@ exports.createEditRequest = async (req, res) => {
       });
     }
 
-    // Simpan pengajuan
+    // =========================
+    // INSERT REQUEST
+    // =========================
+
     const result = await pool.query(
       `
             INSERT INTO attendance_edit_requests

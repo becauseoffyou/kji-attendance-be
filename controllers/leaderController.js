@@ -125,11 +125,14 @@ exports.leaveRequests = async (req, res) => {
             JOIN users u
                 ON u.id = lr.user_id
 
-            WHERE
-                u.supervisor_id = $1
+            WHERE u.supervisor_id = $1
         `;
 
     const params = [supervisorId];
+
+    // =========================
+    // FILTER LEAVE
+    // =========================
 
     if (status !== "ALL") {
       sql += `
@@ -139,6 +142,10 @@ exports.leaveRequests = async (req, res) => {
       params.push(status);
     }
 
+    // =========================
+    // ATTENDANCE EDIT
+    // =========================
+
     sql += `
 
             UNION ALL
@@ -146,20 +153,21 @@ exports.leaveRequests = async (req, res) => {
             SELECT
                 aer.id,
 
-                'PERUBAHAN ABSENSI' AS leave_type,
+                'PERUBAHAN ABSENSI'
+                    AS leave_type,
 
-                a.attendance_date AS start_date,
-                a.attendance_date AS end_date,
+                a.attendance_date
+                    AS start_date,
+
+                a.attendance_date
+                    AS end_date,
 
                 aer.reason,
 
-                NULL AS attachment,
+                NULL::text
+                    AS attachment,
 
-                CASE
-                    WHEN aer.status = 'PENDING'
-                        THEN 'PENDING_SUPERVISOR'
-                    ELSE aer.status
-                END AS status,
+                aer.status,
 
                 aer.created_at,
                 aer.approved_at,
@@ -168,7 +176,8 @@ exports.leaveRequests = async (req, res) => {
                 u.name,
                 u.email,
 
-                'ATTENDANCE_EDIT' AS request_type,
+                'ATTENDANCE_EDIT'
+                    AS request_type,
 
                 aer.old_check_in,
                 aer.new_check_in,
@@ -183,23 +192,16 @@ exports.leaveRequests = async (req, res) => {
             JOIN attendance a
                 ON a.id = aer.attendance_id
 
-            WHERE
-                u.supervisor_id = $1
+            WHERE u.supervisor_id = $1
         `;
+
+    // =========================
+    // FILTER ATTENDANCE EDIT
+    // =========================
 
     if (status !== "ALL") {
       sql += `
-                AND (
-                    (
-                        $2 = 'PENDING_SUPERVISOR'
-                        AND aer.status = 'PENDING'
-                    )
-                    OR
-                    (
-                        $2 != 'PENDING_SUPERVISOR'
-                        AND aer.status = $2
-                    )
-                )
+                AND aer.status = $2
             `;
     }
 
@@ -209,30 +211,34 @@ exports.leaveRequests = async (req, res) => {
 
     const result = await pool.query(sql, params);
 
-    // ============================
+    // =========================
     // SUMMARY
-    // ============================
+    // =========================
 
     const summary = await pool.query(
       `
             SELECT
 
                 COUNT(*) FILTER (
-                    WHERE request_status = 'PENDING'
+                    WHERE request_status =
+                        'PENDING_SUPERVISOR'
                 ) AS pending,
 
                 COUNT(*) FILTER (
-                    WHERE request_status = 'APPROVED'
+                    WHERE request_status =
+                        'APPROVED'
                 ) AS approved,
 
                 COUNT(*) FILTER (
-                    WHERE request_status = 'REJECTED'
+                    WHERE request_status =
+                        'REJECTED'
                 ) AS rejected,
 
                 COUNT(*) AS total
 
             FROM (
 
+                -- LEAVE
                 SELECT
                     lr.status AS request_status
 
@@ -248,6 +254,7 @@ exports.leaveRequests = async (req, res) => {
                 UNION ALL
 
 
+                -- ATTENDANCE EDIT
                 SELECT
                     aer.status AS request_status
 
@@ -278,6 +285,7 @@ exports.leaveRequests = async (req, res) => {
     });
   }
 };
+
 exports.leaveDetail = async (req, res) => {
   try {
     const { id } = req.params;

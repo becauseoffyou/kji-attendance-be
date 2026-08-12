@@ -1024,6 +1024,27 @@ exports.createEditRequest = async (req, res) => {
       });
     }
 
+    // Cek apakah absensi ini sudah pernah dikoreksi
+    const approvedResult = await pool.query(
+      `
+    SELECT id
+    FROM attendance_edit_requests
+    WHERE attendance_id = $1
+      AND user_id = $2
+      AND status = 'APPROVED'
+    LIMIT 1
+    `,
+      [attendance_id, userId],
+    );
+
+    if (approvedResult.rows.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Absensi ini sudah pernah dikoreksi dan tidak dapat diubah lagi.",
+      });
+    }
+
     // Simpan pengajuan
     const result = await pool.query(
       `

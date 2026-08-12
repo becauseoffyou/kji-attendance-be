@@ -67,13 +67,22 @@ exports.readLeaveResult = async (req, res) => {
   try {
     await pool.query(
       `
-      UPDATE notifications
-      SET is_read = true
-      WHERE
-        user_id = $1
-        AND type IN ('LEAVE_APPROVED', 'LEAVE_REJECTED')
-        AND is_read = false
-      `,
+            UPDATE notifications
+
+            SET is_read = true
+
+            WHERE
+                user_id = $1
+
+                AND type IN (
+                    'LEAVE_APPROVED',
+                    'LEAVE_REJECTED',
+                    'ATTENDANCE_EDIT_APPROVED',
+                    'ATTENDANCE_EDIT_REJECTED'
+                )
+
+                AND is_read = false
+            `,
       [req.user.id],
     );
 

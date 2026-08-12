@@ -751,7 +751,7 @@ exports.approveAttendanceEdit = async (req, res) => {
     }
 
     // Pastikan masih pending
-    if (request.status !== "PENDING") {
+    if (request.status !== "PENDING_SUPERVISOR") {
       await client.query("ROLLBACK");
 
       return res.status(400).json({
@@ -888,7 +888,7 @@ exports.rejectAttendanceEdit = async (req, res) => {
       });
     }
 
-    if (request.status !== "PENDING") {
+    if (request.status !== "PENDING_SUPERVISOR") {
       await client.query("ROLLBACK");
 
       return res.status(400).json({

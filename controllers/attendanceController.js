@@ -1051,7 +1051,7 @@ exports.createEditRequest = async (req, res) => {
             FROM attendance_edit_requests
             WHERE attendance_id = $1
               AND user_id = $2
-              AND status = 'PENDING'
+              AND status = 'PENDING_SUPERVISOR'
             `,
       [attendance_id, userId],
     );
@@ -1108,7 +1108,7 @@ exports.createEditRequest = async (req, res) => {
                 $5,
                 $6,
                 $7,
-                'PENDING'
+                'PENDING_SUPERVISOR'
             )
             RETURNING *
             `,

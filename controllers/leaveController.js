@@ -166,29 +166,86 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-    SELECT
-      id,
-      leave_type,
-      start_date,
-      end_date,
-      reason,
-      attachment,
-      status,
-      approval_note,
-      created_at
-    FROM leave_requests
-    WHERE user_id = $1
-    ORDER BY created_at DESC
-  `,
+            SELECT
+                id,
+                leave_type,
+                start_date,
+                end_date,
+                reason,
+                attachment,
+                status,
+                approval_note,
+                created_at,
+
+                request_type,
+
+                NULL::timestamp AS old_check_in,
+                NULL::timestamp AS new_check_in,
+                NULL::timestamp AS old_check_out,
+                NULL::timestamp AS new_check_out
+
+            FROM leave_requests
+
+            WHERE user_id = $1
+
+
+            UNION ALL
+
+
+            SELECT
+                aer.id,
+
+                'PERUBAHAN ABSENSI' AS leave_type,
+
+                a.attendance_date AS start_date,
+                a.attendance_date AS end_date,
+
+                aer.reason,
+
+                NULL AS attachment,
+
+                CASE
+                    WHEN aer.status = 'PENDING'
+                        THEN 'PENDING_SUPERVISOR'
+                    ELSE aer.status
+                END AS status,
+
+                CASE
+                    WHEN aer.status = 'REJECTED'
+                        THEN aer.rejection_reason
+                    ELSE NULL
+                END AS approval_note,
+
+                aer.created_at,
+
+                'ATTENDANCE_EDIT' AS request_type,
+
+                aer.old_check_in,
+                aer.new_check_in,
+                aer.old_check_out,
+                aer.new_check_out
+
+            FROM attendance_edit_requests aer
+
+            JOIN attendance a
+                ON a.id = aer.attendance_id
+
+            WHERE aer.user_id = $1
+
+
+            ORDER BY created_at DESC
+            `,
       [userId],
     );
 
     const balance = await pool.query(
       `
-    SELECT leave_balance
-    FROM users
-    WHERE id = $1
-  `,
+            SELECT leave_balance
+
+            FROM users
+
+            WHERE id = $1
+            `,
       [userId],
     );
 
@@ -196,7 +253,7 @@ exports.history = async (req, res) => {
       success: true,
 
       summary: {
-        leave_balance: balance.rows[0].leave_balance,
+        leave_balance: balance.rows[0]?.leave_balance || 0,
       },
 
       data: result.rows,

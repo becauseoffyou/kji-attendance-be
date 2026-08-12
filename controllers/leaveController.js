@@ -177,7 +177,7 @@ exports.history = async (req, res) => {
                 approval_note,
                 created_at,
 
-                request_type,
+                'LEAVE' AS request_type,
 
                 NULL::timestamp AS old_check_in,
                 NULL::timestamp AS new_check_in,
@@ -202,7 +202,7 @@ exports.history = async (req, res) => {
 
                 aer.reason,
 
-                NULL AS attachment,
+                NULL::text AS attachment,
 
                 CASE
                     WHEN aer.status = 'PENDING'
@@ -238,6 +238,10 @@ exports.history = async (req, res) => {
       [userId],
     );
 
+    // =========================
+    // SALDO CUTI
+    // =========================
+
     const balance = await pool.query(
       `
             SELECT leave_balance
@@ -259,7 +263,7 @@ exports.history = async (req, res) => {
       data: result.rows,
     });
   } catch (err) {
-    console.error(err);
+    console.error("LEAVE HISTORY ERROR:", err);
 
     return res.status(500).json({
       success: false,

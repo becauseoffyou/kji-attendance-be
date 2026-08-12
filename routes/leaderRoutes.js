@@ -10,4 +10,10 @@ router.get("/leave/:id", auth, controller.leaveDetail);
 router.patch("/leave/:id/reject", auth, controller.rejectLeave);
 router.patch("/leave/:id/approve", auth, controller.approveLeave);
 
+router.get("/attendance/:id", auth, controller.attendanceEditDetail);
+
+router.patch("/attendance/:id/approve", auth, controller.approveAttendanceEdit);
+
+router.patch("/attendance/:id/reject", auth, controller.rejectAttendanceEdit);
+
 module.exports = router;

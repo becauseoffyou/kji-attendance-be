@@ -606,3 +606,337 @@ exports.rejectLeave = async (req, res) => {
     client.release();
   }
 };
+
+exports.attendanceEditDetail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const supervisorId = req.user.id;
+
+    const result = await pool.query(
+      `
+            SELECT
+                aer.id,
+                aer.attendance_id,
+                aer.user_id,
+
+                aer.old_check_in,
+                aer.new_check_in,
+
+                aer.old_check_out,
+                aer.new_check_out,
+
+                aer.reason,
+                aer.status,
+                aer.created_at,
+                aer.approved_at,
+                aer.rejection_reason,
+
+                a.attendance_date,
+
+                u.name,
+                u.email,
+                u.department,
+                u.position,
+                u.photo
+
+            FROM attendance_edit_requests aer
+
+            JOIN attendance a
+                ON a.id = aer.attendance_id
+
+            JOIN users u
+                ON u.id = aer.user_id
+
+            WHERE aer.id = $1
+              AND u.supervisor_id = $2
+            `,
+      [id, supervisorId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Pengajuan perubahan absensi tidak ditemukan.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      data: result.rows[0],
+    });
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
+};
+
+exports.approveAttendanceEdit = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { id } = req.params;
+    const { note } = req.body;
+
+    const supervisorId = req.user.id;
+
+    const result = await client.query(
+      `
+            SELECT
+                aer.*,
+                a.attendance_date,
+                u.supervisor_id,
+                u.name
+
+            FROM attendance_edit_requests aer
+
+            JOIN attendance a
+                ON a.id = aer.attendance_id
+
+            JOIN users u
+                ON u.id = aer.user_id
+
+            WHERE aer.id = $1
+
+            FOR UPDATE
+            `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "Pengajuan tidak ditemukan.",
+      });
+    }
+
+    const request = result.rows[0];
+
+    // Pastikan yang approve adalah atasannya
+    if (request.supervisor_id !== supervisorId) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses.",
+      });
+    }
+
+    // Pastikan masih pending
+    if (request.status !== "PENDING") {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "Pengajuan sudah diproses.",
+      });
+    }
+
+    // Update attendance
+    await client.query(
+      `
+            UPDATE attendance
+            SET
+                check_in = COALESCE($1, check_in),
+                check_out = COALESCE($2, check_out)
+
+            WHERE id = $3
+            `,
+      [request.new_check_in, request.new_check_out, request.attendance_id],
+    );
+
+    // Update request
+    await client.query(
+      `
+            UPDATE attendance_edit_requests
+            SET
+                status = 'APPROVED',
+                approved_by = $1,
+                approved_at = NOW(),
+                rejection_reason = NULL,
+                updated_at = NOW()
+
+            WHERE id = $2
+            `,
+      [supervisorId, id],
+    );
+
+    // Notification
+    await client.query(
+      `
+            INSERT INTO notifications
+            (
+                user_id,
+                title,
+                message,
+                type,
+                reference_id
+            )
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5
+            )
+            `,
+      [
+        request.user_id,
+        "Perubahan Absensi Disetujui",
+        "Pengajuan perubahan absensi Anda telah disetujui.",
+        "ATTENDANCE_EDIT_APPROVED",
+        request.id,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Perubahan absensi berhasil disetujui.",
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  } finally {
+    client.release();
+  }
+};
+
+exports.rejectAttendanceEdit = async (req, res) => {
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    const { id } = req.params;
+    const { note } = req.body;
+
+    const supervisorId = req.user.id;
+
+    const result = await client.query(
+      `
+            SELECT
+                aer.*,
+                u.supervisor_id,
+                u.name
+
+            FROM attendance_edit_requests aer
+
+            JOIN users u
+                ON u.id = aer.user_id
+
+            WHERE aer.id = $1
+
+            FOR UPDATE
+            `,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+
+      return res.status(404).json({
+        success: false,
+        message: "Pengajuan tidak ditemukan.",
+      });
+    }
+
+    const request = result.rows[0];
+
+    if (request.supervisor_id !== supervisorId) {
+      await client.query("ROLLBACK");
+
+      return res.status(403).json({
+        success: false,
+        message: "Anda tidak memiliki akses.",
+      });
+    }
+
+    if (request.status !== "PENDING") {
+      await client.query("ROLLBACK");
+
+      return res.status(400).json({
+        success: false,
+        message: "Pengajuan sudah diproses.",
+      });
+    }
+
+    await client.query(
+      `
+            UPDATE attendance_edit_requests
+            SET
+                status = 'REJECTED',
+                approved_by = $1,
+                approved_at = NOW(),
+                rejection_reason = $2,
+                updated_at = NOW()
+
+            WHERE id = $3
+            `,
+      [supervisorId, note || null, id],
+    );
+
+    await client.query(
+      `
+            INSERT INTO notifications
+            (
+                user_id,
+                title,
+                message,
+                type,
+                reference_id
+            )
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5
+            )
+            `,
+      [
+        request.user_id,
+        "Perubahan Absensi Ditolak",
+        note
+          ? `Pengajuan perubahan absensi Anda ditolak. Alasan: ${note}`
+          : "Pengajuan perubahan absensi Anda ditolak.",
+        "ATTENDANCE_EDIT_REJECTED",
+        request.id,
+      ],
+    );
+
+    await client.query("COMMIT");
+
+    return res.json({
+      success: true,
+      message: "Pengajuan perubahan absensi ditolak.",
+    });
+  } catch (err) {
+    await client.query("ROLLBACK");
+
+    console.error(err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  } finally {
+    client.release();
+  }
+};

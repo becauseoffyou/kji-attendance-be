@@ -1,6 +1,7 @@
 const pool = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 const { sendEmail } = require("../services/googleMailService");
 
 exports.login = async (req, res) => {
@@ -310,7 +311,7 @@ exports.createEmployee = async (req, res) => {
       ">
 
         <h2 style="margin-bottom: 20px;">
-          Akun KJI Attendance
+          Akun Aplikasi Absensi
         </h2>
 
         <p>
@@ -341,7 +342,7 @@ exports.createEmployee = async (req, res) => {
 
         <p>
           Silakan gunakan email dan password sementara tersebut
-          untuk login ke sistem KJI Attendance.
+          untuk login ke Aplikasi Kancha Attendance.
         </p>
 
         <p>
@@ -636,6 +637,151 @@ exports.activateEmployee = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Gagal mengaktifkan karyawan",
+    });
+  }
+};
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Email wajib diisi.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT id, name, email
+      FROM users
+      WHERE email = $1
+        AND status = true
+      LIMIT 1
+      `,
+      [email],
+    );
+
+    /*
+     * Demi keamanan, jangan kasih tahu apakah
+     * email tersebut terdaftar atau tidak.
+     */
+    if (result.rows.length === 0) {
+      return res.json({
+        success: true,
+        message: "Jika email terdaftar, link reset password akan dikirim.",
+      });
+    }
+
+    const user = result.rows[0];
+
+    // Generate token random
+    const resetToken = crypto.randomBytes(32).toString("hex");
+
+    // Berlaku 15 menit
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+    await pool.query(
+      `
+      UPDATE users
+      SET
+        reset_password_token = $1,
+        reset_password_expires = $2,
+        updated_at = NOW()
+      WHERE id = $3
+      `,
+      [resetToken, expires, user.id],
+    );
+
+    // URL frontend Vercel
+    const resetUrl = `https://kji-attendance-fe.vercel.app/reset-password?token=${resetToken}`;
+
+    await sendEmail({
+      to: user.email,
+
+      subject: "Reset Password - KJI Attendance",
+
+      html: `
+        <div style="
+          font-family: Arial, sans-serif;
+          max-width: 600px;
+          margin: auto;
+          padding: 24px;
+          color: #333;
+        ">
+
+          <h2 style="color:#16A34A;">
+            Reset Password
+          </h2>
+
+          <p>
+            Halo <strong>${user.name}</strong>,
+          </p>
+
+          <p>
+            Kami menerima permintaan untuk mengatur ulang
+            password akun KJI Attendance Anda.
+          </p>
+
+          <div style="margin: 30px 0; text-align:center;">
+
+            <a
+              href="${resetUrl}"
+              style="
+                display:inline-block;
+                background:#16A34A;
+                color:white;
+                padding:12px 24px;
+                text-decoration:none;
+                border-radius:8px;
+                font-weight:bold;
+              "
+            >
+              Reset Password
+            </a>
+
+          </div>
+
+          <p>
+            Link ini berlaku selama <strong>15 menit</strong>.
+          </p>
+
+          <p>
+            Jika Anda tidak meminta reset password,
+            abaikan email ini.
+          </p>
+
+          <hr
+            style="
+              border:0;
+              border-top:1px solid #ddd;
+              margin:30px 0;
+            "
+          >
+
+          <p style="
+            font-size:12px;
+            color:#888;
+          ">
+            Email ini dikirim otomatis oleh
+            KJI Attendance.
+          </p>
+
+        </div>
+      `,
+    });
+
+    return res.json({
+      success: true,
+      message: "Jika email terdaftar, link reset password akan dikirim.",
+    });
+  } catch (err) {
+    console.error("FORGOT PASSWORD ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memproses reset password.",
     });
   }
 };

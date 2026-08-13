@@ -2,7 +2,7 @@ const mailer = require("../config/mail");
 
 exports.testEmail = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.query.email;
 
     if (!email) {
       return res.status(400).json({
@@ -14,11 +14,12 @@ exports.testEmail = async (req, res) => {
     const info = await mailer.sendMail({
       from: process.env.MAIL_FROM,
       to: email,
-      subject: "Test Email - Sistem Absensi",
+      subject: "Test Email - KJI Attendance",
       text: "Email berhasil dikirim dari Railway.",
       html: `
                 <h2>Test Email</h2>
-                <p>Email berhasil dikirim dari backend Sistem Absensi melalui Railway.</p>
+                <p>Email berhasil dikirim dari Railway.</p>
+                <p>Sistem email KJI Attendance berhasil terhubung.</p>
             `,
     });
 

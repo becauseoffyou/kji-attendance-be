@@ -3,6 +3,8 @@ const mailer = require("../config/mail");
 const { google } = require("googleapis");
 
 const oauth2Client = require("../config/google");
+const { sendEmail } = require("../services/googleMailService");
+
 exports.testEmail = async (req, res) => {
   try {
     const email = req.query.email;
@@ -14,29 +16,57 @@ exports.testEmail = async (req, res) => {
       });
     }
 
-    const info = await mailer.sendMail({
-      from: process.env.MAIL_FROM,
+    console.log("📧 Gmail API →", email);
+
+    const result = await sendEmail({
       to: email,
+
       subject: "Test Email - KJI Attendance",
-      text: "Email berhasil dikirim dari Railway.",
+
       html: `
-                <h2>Test Email</h2>
-                <p>Email berhasil dikirim dari Railway.</p>
-                <p>Sistem email KJI Attendance berhasil terhubung.</p>
+                <div style="
+                    font-family: Arial, sans-serif;
+                    padding: 20px;
+                ">
+
+                    <h2>
+                        KJI Attendance
+                    </h2>
+
+                    <p>
+                        Halo 👋
+                    </p>
+
+                    <p>
+                        Ini adalah email percobaan
+                        dari sistem KJI Attendance.
+                    </p>
+
+                    <p>
+                        Gmail API berhasil terhubung
+                        dengan backend Railway.
+                    </p>
+
+                </div>
             `,
     });
+
+    console.log("✅ Gmail API berhasil:", result.id);
 
     return res.json({
       success: true,
       message: "Email berhasil dikirim.",
-      messageId: info.messageId,
+      messageId: result.id,
     });
   } catch (err) {
-    console.error("EMAIL ERROR:", err);
+    console.error(
+      "❌ GMAIL API ERROR:",
+      err.response?.data || err.message || err,
+    );
 
     return res.status(500).json({
       success: false,
-      message: err.message,
+      message: err.response?.data?.error?.message || err.message,
     });
   }
 };

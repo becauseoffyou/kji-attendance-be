@@ -192,7 +192,7 @@ exports.createEmployee = async (req, res) => {
     // kji + 4 digit terakhir NIK
     // =========================
 
-    const defaultPassword = `kji${nik.slice(-4)}`;
+    const defaultPassword = `kancha${nik.slice(-4)}`;
 
     const hashedPassword = await bcrypt.hash(defaultPassword, 10);
 

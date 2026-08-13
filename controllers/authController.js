@@ -1,6 +1,7 @@
 const pool = require("../config/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { sendEmail } = require("../services/googleMailService");
 
 exports.login = async (req, res) => {
   try {
@@ -293,9 +294,96 @@ exports.createEmployee = async (req, res) => {
 
     await client.query("COMMIT");
 
+    try {
+      await sendEmail({
+        to: email,
+
+        subject: "Akun KJI Attendance Berhasil Dibuat",
+
+        html: `
+      <div style="
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: auto;
+        padding: 24px;
+        color: #333;
+      ">
+
+        <h2 style="margin-bottom: 20px;">
+          Akun KJI Attendance
+        </h2>
+
+        <p>
+          Halo <strong>${name}</strong>,
+        </p>
+
+        <p>
+          Akun Anda telah berhasil dibuat oleh administrator.
+        </p>
+
+        <div style="
+          background: #f4f6f8;
+          padding: 18px;
+          border-radius: 8px;
+          margin: 20px 0;
+        ">
+
+          <p style="margin: 6px 0;">
+            <strong>Email:</strong> ${email}
+          </p>
+
+          <p style="margin: 6px 0;">
+            <strong>Password sementara:</strong>
+            ${defaultPassword}
+          </p>
+
+        </div>
+
+        <p>
+          Silakan gunakan email dan password sementara tersebut
+          untuk login ke sistem KJI Attendance.
+        </p>
+
+        <p>
+          Setelah berhasil login, segera ubah password Anda
+          demi keamanan akun.
+        </p>
+
+        <p style="
+          color: #777;
+          font-size: 13px;
+          margin-top: 30px;
+        ">
+          Jangan bagikan password ini kepada orang lain.
+        </p>
+
+        <hr style="
+          border: 0;
+          border-top: 1px solid #ddd;
+          margin: 25px 0;
+        ">
+
+        <p style="
+          font-size: 12px;
+          color: #888;
+        ">
+          Email ini dikirim otomatis oleh sistem KJI Attendance.
+        </p>
+
+      </div>
+    `,
+      });
+    } catch (emailError) {
+      console.error("SEND EMPLOYEE EMAIL ERROR:", emailError);
+
+      // Akun tetap berhasil dibuat.
+      // Email gagal tidak membatalkan INSERT.
+    }
+
     return res.status(201).json({
       success: true,
-      message: "Karyawan berhasil dibuat",
+      message:
+        "Karyawan berhasil dibuat dan password sementara dikirim ke email.",
       data: result.rows[0],
     });
   } catch (err) {

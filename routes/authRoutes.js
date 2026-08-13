@@ -8,7 +8,7 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 const { uploadEmployee } = require("../middleware/uploadMiddleware");
 router.post("/login", authController.login);
 router.post("/forgot-password", authController.forgotPassword);
-
+router.post("/reset-password", authController.resetPassword);
 router.get("/me", authMiddleware, authController.me);
 
 router.post(

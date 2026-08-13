@@ -785,3 +785,78 @@ exports.forgotPassword = async (req, res) => {
     });
   }
 };
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password, password_confirmation } = req.body;
+
+    if (!token || !password || !password_confirmation) {
+      return res.status(400).json({
+        success: false,
+        message: "Data reset password tidak lengkap.",
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password minimal 8 karakter.",
+      });
+    }
+
+    if (password !== password_confirmation) {
+      return res.status(400).json({
+        success: false,
+        message: "Konfirmasi password tidak sama.",
+      });
+    }
+
+    const result = await pool.query(
+      `
+      SELECT id
+      FROM users
+      WHERE reset_password_token = $1
+        AND reset_password_expires > NOW()
+        AND status = true
+      LIMIT 1
+      `,
+      [token],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Link reset password tidak valid atau sudah kedaluwarsa.",
+      });
+    }
+
+    const userId = result.rows[0].id;
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      `
+      UPDATE users
+      SET
+        password = $1,
+        reset_password_token = NULL,
+        reset_password_expires = NULL,
+        updated_at = NOW()
+      WHERE id = $2
+      `,
+      [hashedPassword, userId],
+    );
+
+    return res.json({
+      success: true,
+      message: "Password berhasil diubah. Silakan login kembali.",
+    });
+  } catch (err) {
+    console.error("RESET PASSWORD ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengubah password.",
+    });
+  }
+};

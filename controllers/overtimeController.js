@@ -39,31 +39,30 @@ exports.create = async (req, res) => {
         // HITUNG DURASI
         // =========================
 
-        const durationResult = await pool.query(
-            `
-    SELECT
-        CASE
-            WHEN $2::time > $1::time
-                THEN EXTRACT(EPOCH FROM ($2::time - $1::time)) / 60
-            ELSE
-                EXTRACT(
-                    EPOCH FROM (
-                        ($2::time + INTERVAL '24 hours')
-                        - $1::time
-                    )
-                ) / 60
-        END AS duration
-    `,
-            [
-                start_time,
-                end_time,
-            ],
-        );
-        const durationMinutes = Math.round(
-            Number(
-                durationResult.rows[0].duration
-            )
-        );
+        // =========================
+        // HITUNG DURASI LEMBUR
+        // =========================
+
+        const [startHour, startMinute] =
+            start_time.split(":").map(Number);
+
+        const [endHour, endMinute] =
+            end_time.split(":").map(Number);
+
+        let startTotal =
+            startHour * 60 + startMinute;
+
+        let endTotal =
+            endHour * 60 + endMinute;
+
+        // Kalau selesai lebih kecil,
+        // berarti lembur melewati tengah malam
+        if (endTotal < startTotal) {
+            endTotal += 24 * 60;
+        }
+
+        const durationMinutes =
+            endTotal - startTotal;
 
         if (durationMinutes <= 0) {
             return res.status(400).json({

@@ -12,6 +12,34 @@ const app = express();
 const pool = require("./config/db");
 
 // ==============================
+// CORS
+// ==============================
+
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://kji-attendance-fe.vercel.app",
+    ],
+    credentials: true,
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+    ],
+  }),
+);
+
+app.options("*", cors());
+
+// ==============================
 // Routes
 // ==============================
 const authRoutes = require("./routes/authRoutes");
@@ -25,22 +53,15 @@ const testRoutes = require("./routes/testRoutes");
 const overtimeRoutes = require("./routes/overtimeRoutes");
 
 app.use(
-    "/api/overtime",
-    overtimeRoutes,
+  "/api/overtime",
+  overtimeRoutes,
 );
 
 app.use("/api/test", testRoutes);
 // ==============================
 // Middleware
 // ==============================
-app.use(
-  cors({
-    origin: ["http://localhost:5173", "https://kji-attendance-fe.vercel.app"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  }),
-);
+
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

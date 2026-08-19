@@ -380,10 +380,9 @@ exports.managerHistory = async (req, res) => {
             FROM overtime_requests o
             JOIN users u
                 ON u.id = o.user_id
-            WHERE o.status = 'PENDING_MANAGER'
             ORDER BY
-                o.overtime_date ASC,
-                o.created_at ASC
+                o.overtime_date DESC,
+                o.created_at DESC
             `
         );
 
@@ -406,7 +405,6 @@ exports.managerHistory = async (req, res) => {
 
     }
 };
-
 exports.managerDetail = async (req, res) => {
 
     try {

@@ -223,9 +223,11 @@ exports.create = async (req, res) => {
         const managerResult =
             await pool.query(
                 `
-                SELECT id
-                FROM users
-                WHERE UPPER(role) = 'MANAGER'
+               SELECT u.id
+        FROM users u
+        JOIN roles r
+            ON r.id = u.role_id
+        WHERE UPPER(r.name) = 'MANAGER'
                 `
             );
 

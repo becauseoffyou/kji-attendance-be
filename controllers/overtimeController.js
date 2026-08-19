@@ -160,7 +160,7 @@ exports.create = async (req, res) => {
                 $5,
                 $6,
                 $7,
-                'PENDING_SUPERVISOR'
+                'PENDING_MANAGER'
             )
             RETURNING *
             `,
@@ -238,5 +238,171 @@ exports.history = async (req, res) => {
             success: false,
             message: err.message
         });
+    }
+};
+
+exports.approveByManager = async (req, res) => {
+    try {
+
+        const overtimeId = req.params.id;
+
+        const result = await pool.query(
+            `
+            UPDATE overtime_requests
+            SET
+                status = 'APPROVED',
+                manager_id = $1,
+                manager_note = $2,
+                manager_approved_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $3
+              AND status = 'PENDING_MANAGER'
+            RETURNING *
+            `,
+            [
+                req.user.id,
+                req.body.note || null,
+                overtimeId
+            ]
+        );
+
+        if (result.rowCount === 0) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Pengajuan tidak ditemukan atau sudah diproses."
+            });
+
+        }
+
+        return res.json({
+            success: true,
+            message:
+                "Pengajuan lembur berhasil disetujui.",
+            data: result.rows[0]
+        });
+
+    } catch (err) {
+
+        console.error(
+            "APPROVE OVERTIME ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+};
+
+exports.rejectByManager = async (req, res) => {
+    try {
+
+        const overtimeId = req.params.id;
+        const note = req.body.note?.trim();
+
+        if (!note) {
+            return res.status(400).json({
+                success: false,
+                message: "Alasan penolakan wajib diisi."
+            });
+        }
+
+        const result = await pool.query(
+            `
+            UPDATE overtime_requests
+            SET
+                status = 'REJECTED',
+                manager_id = $1,
+                manager_note = $2,
+                manager_approved_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $3
+              AND status = 'PENDING_MANAGER'
+            RETURNING *
+            `,
+            [
+                req.user.id,
+                note,
+                overtimeId
+            ]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Pengajuan tidak ditemukan atau sudah diproses."
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: "Pengajuan lembur berhasil ditolak.",
+            data: result.rows[0]
+        });
+
+    } catch (err) {
+
+        console.error(
+            "REJECT OVERTIME ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+};
+
+exports.managerHistory = async (req, res) => {
+    try {
+
+        const result = await pool.query(
+            `
+            SELECT
+                o.id,
+                o.user_id,
+                u.name,
+                u.email,
+                o.overtime_date,
+                o.start_time,
+                o.end_time,
+                o.duration_minutes,
+                o.reason,
+                o.status,
+                o.created_at
+            FROM overtime_requests o
+            JOIN users u
+                ON u.id = o.user_id
+            WHERE o.status = 'PENDING_MANAGER'
+            ORDER BY
+                o.overtime_date ASC,
+                o.created_at ASC
+            `
+        );
+
+        return res.json({
+            success: true,
+            data: result.rows
+        });
+
+    } catch (err) {
+
+        console.error(
+            "MANAGER OVERTIME HISTORY ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
     }
 };

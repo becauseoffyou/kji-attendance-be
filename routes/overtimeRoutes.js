@@ -18,4 +18,22 @@ router.get(
     controller.history
 );
 
+router.put(
+    "/:id/approve",
+    auth,
+    controller.approveByManager
+);
+
+router.put(
+    "/:id/reject",
+    auth,
+    controller.rejectByManager
+);
+
+router.get(
+    "/manager",
+    auth,
+    controller.managerHistory
+);
+
 module.exports = router;

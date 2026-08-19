@@ -29,33 +29,36 @@ exports.create = async (req, res) => {
         // VALIDASI JAM
         // =========================
 
-        if (end_time <= start_time) {
+        if (end_time === start_time) {
             return res.status(400).json({
                 success: false,
-                message:
-                    "Jam selesai harus lebih besar dari jam mulai.",
+                message: "Jam mulai dan jam selesai tidak boleh sama.",
             });
         }
-
         // =========================
         // HITUNG DURASI
         // =========================
 
         const durationResult = await pool.query(
             `
-            SELECT
+    SELECT
+        CASE
+            WHEN $2::time > $1::time
+                THEN EXTRACT(EPOCH FROM ($2::time - $1::time)) / 60
+            ELSE
                 EXTRACT(
                     EPOCH FROM (
-                        $2::time - $1::time
+                        ($2::time + INTERVAL '24 hours')
+                        - $1::time
                     )
-                ) / 60 AS duration
-            `,
+                ) / 60
+        END AS duration
+    `,
             [
                 start_time,
                 end_time,
             ],
         );
-
         const durationMinutes = Math.round(
             Number(
                 durationResult.rows[0].duration

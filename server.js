@@ -22,6 +22,12 @@ const leaveRoutes = require("./routes/leaveRoutes");
 const supervisorRoutes = require("./routes/leaderRoutes");
 const notificationRoutes = require("./routes/notificationRoute");
 const testRoutes = require("./routes/testRoutes");
+const overtimeRoutes = require("./routes/overtimeRoutes");
+
+app.use(
+    "/api/overtime",
+    overtimeRoutes,
+);
 
 app.use("/api/test", testRoutes);
 // ==============================

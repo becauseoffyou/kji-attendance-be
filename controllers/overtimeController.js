@@ -406,3 +406,51 @@ exports.managerHistory = async (req, res) => {
 
     }
 };
+
+exports.managerDetail = async (req, res) => {
+
+    try {
+
+        const result = await pool.query(
+            `
+            SELECT
+                o.*,
+                u.name,
+                u.email
+            FROM overtime_requests o
+            JOIN users u
+                ON u.id = o.user_id
+            WHERE o.id = $1
+            `,
+            [req.params.id]
+        );
+
+        if (result.rowCount === 0) {
+
+            return res.status(404).json({
+                success: false,
+                message: "Pengajuan lembur tidak ditemukan."
+            });
+
+        }
+
+        return res.json({
+            success: true,
+            data: result.rows[0]
+        });
+
+    } catch (err) {
+
+        console.error(
+            "MANAGER OVERTIME DETAIL ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};

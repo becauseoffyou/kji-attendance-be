@@ -36,4 +36,10 @@ router.get(
     controller.managerHistory
 );
 
+router.get(
+    "/manager/:id",
+    auth,
+    controller.managerDetail
+);
+
 module.exports = router;

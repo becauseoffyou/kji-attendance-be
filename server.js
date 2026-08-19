@@ -36,7 +36,8 @@ app.use(
     ],
   }),
 );
-
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // ==============================
 // Routes
@@ -56,14 +57,9 @@ app.use(
   overtimeRoutes,
 );
 
-app.use("/api/test", testRoutes);
 // ==============================
 // Middleware
 // ==============================
-
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 console.log("SERVER DIR:", __dirname);
 console.log("UPLOADS DIR:", path.join(__dirname, "uploads"));

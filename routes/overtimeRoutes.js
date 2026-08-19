@@ -12,4 +12,10 @@ router.post(
     controller.create,
 );
 
+router.get(
+    "/history",
+    auth,
+    controller.history
+);
+
 module.exports = router;

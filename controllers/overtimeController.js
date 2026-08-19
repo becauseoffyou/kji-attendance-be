@@ -195,3 +195,48 @@ exports.create = async (req, res) => {
         });
     }
 };
+
+exports.history = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const result = await pool.query(
+            `
+            SELECT
+                o.id,
+                o.overtime_date,
+                o.start_time,
+                o.end_time,
+                o.duration_minutes,
+                o.reason,
+                o.status,
+                o.supervisor_note,
+                o.manager_note,
+                o.created_at
+            FROM overtime_requests o
+            WHERE o.user_id = $1
+            ORDER BY
+                o.overtime_date DESC,
+                o.created_at DESC
+            `,
+            [userId]
+        );
+
+        return res.json({
+            success: true,
+            data: result.rows
+        });
+
+    } catch (err) {
+
+        console.error(
+            "OVERTIME HISTORY ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};

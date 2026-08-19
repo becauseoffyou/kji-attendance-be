@@ -276,11 +276,45 @@ exports.approveByManager = async (req, res) => {
 
         }
 
+        const overtime = result.rows[0];
+
+        // =========================
+        // NOTIFICATION KE KARYAWAN
+        // =========================
+
+        await pool.query(
+            `
+            INSERT INTO notifications
+            (
+                user_id,
+                title,
+                message,
+                type,
+                reference_id
+            )
+            VALUES
+            (
+                $1,
+                $2,
+                $3,
+                $4,
+                $5
+            )
+            `,
+            [
+                overtime.user_id,
+                "Pengajuan Lembur Disetujui",
+                "Pengajuan lembur Anda telah disetujui oleh Manager.",
+                "OVERTIME_APPROVED",
+                overtime.id
+            ]
+        );
+
         return res.json({
             success: true,
             message:
                 "Pengajuan lembur berhasil disetujui.",
-            data: result.rows[0]
+            data: overtime
         });
 
     } catch (err) {

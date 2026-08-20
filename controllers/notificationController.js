@@ -75,11 +75,13 @@ exports.readLeaveResult = async (req, res) => {
             WHERE
                 user_id = $1
 
-                AND type IN (
+               AND type IN (
                     'LEAVE_APPROVED',
                     'LEAVE_REJECTED',
                     'ATTENDANCE_EDIT_APPROVED',
-                    'ATTENDANCE_EDIT_REJECTED'
+                    'ATTENDANCE_EDIT_REJECTED',
+                    'OVERTIME_APPROVED',
+                    'OVERTIME_REJECTED'
                 )
 
                 AND is_read = false

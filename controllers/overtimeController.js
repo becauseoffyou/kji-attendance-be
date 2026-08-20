@@ -624,9 +624,7 @@ exports.managerHistory = async (req, res) => {
                 FROM overtime_requests o
                 JOIN users u
                     ON u.id = o.user_id
-                ORDER BY
-                    o.overtime_date DESC,
-                    o.created_at DESC
+              ORDER BY o.created_at DESC
                 `
             );
 

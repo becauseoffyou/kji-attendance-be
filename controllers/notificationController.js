@@ -41,9 +41,10 @@ exports.readPendingLeave = async (req, res) => {
                 user_id = $1
 
                 AND type IN (
-                    'LEAVE_PENDING',
-                    'ATTENDANCE_EDIT_PENDING'
-                )
+    'LEAVE_PENDING',
+    'ATTENDANCE_EDIT_PENDING',
+    'OVERTIME_PENDING'
+)
 
                 AND is_read = false
             `,

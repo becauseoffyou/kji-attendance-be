@@ -96,6 +96,86 @@ exports.create = async (req, res) => {
 
 
         // =========================
+        // AMBIL TARIF LEMBUR
+        // =========================
+
+        const settingResult =
+            await pool.query(
+                `
+                SELECT
+                    weekday_rate,
+                    weekend_rate
+                FROM overtime_settings
+                ORDER BY id ASC
+                LIMIT 1
+                `
+            );
+
+
+        if (
+            settingResult.rows.length === 0
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Pengaturan tarif lembur belum tersedia.",
+            });
+
+        }
+
+
+        const weekdayRate =
+            Number(
+                settingResult.rows[0].weekday_rate
+            );
+
+        const weekendRate =
+            Number(
+                settingResult.rows[0].weekend_rate
+            );
+
+
+        // =========================
+        // TENTUKAN HARI
+        // =========================
+
+        const overtimeDateObj =
+            new Date(
+                `${overtime_date}T00:00:00`
+            );
+
+
+        const day =
+            overtimeDateObj.getDay();
+
+
+        // 0 = Minggu
+        // 6 = Sabtu
+
+        const hourlyRate =
+            day === 0 || day === 6
+                ? weekendRate
+                : weekdayRate;
+
+
+        // =========================
+        // HITUNG NOMINAL
+        // PROPORSIONAL PER MENIT
+        // =========================
+
+        const overtimeAmount =
+            (durationMinutes / 60) *
+            hourlyRate;
+
+
+        const finalOvertimeAmount =
+            Number(
+                overtimeAmount.toFixed(2)
+            );
+
+
+        // =========================
         // CEK ABSENSI
         // =========================
 
@@ -185,7 +265,9 @@ exports.create = async (req, res) => {
                     end_time,
                     duration_minutes,
                     reason,
-                    status
+                    status,
+                    hourly_rate,
+                    overtime_amount
                 )
                 VALUES
                 (
@@ -196,7 +278,9 @@ exports.create = async (req, res) => {
                     $5,
                     $6,
                     $7,
-                    'PENDING_MANAGER'
+                    'PENDING_MANAGER',
+                    $8,
+                    $9
                 )
                 RETURNING *
                 `,
@@ -208,6 +292,8 @@ exports.create = async (req, res) => {
                     end_time,
                     durationMinutes,
                     reason,
+                    hourlyRate,
+                    finalOvertimeAmount,
                 ],
             );
 
@@ -223,11 +309,11 @@ exports.create = async (req, res) => {
         const managerResult =
             await pool.query(
                 `
-               SELECT u.id
-        FROM users u
-        JOIN roles r
-            ON r.id = u.role_id
-        WHERE UPPER(r.name) = 'MANAGER'
+                SELECT u.id
+                FROM users u
+                JOIN roles r
+                    ON r.id = u.role_id
+                WHERE UPPER(r.name) = 'MANAGER'
                 `
             );
 
@@ -299,7 +385,6 @@ exports.create = async (req, res) => {
 
     }
 };
-
 
 // =====================================================
 // EMPLOYEE HISTORY
@@ -1055,6 +1140,186 @@ exports.getAdminRecap = async (req, res) => {
 
             message: err.message
 
+        });
+
+    }
+};
+
+// =====================================================
+// GET OVERTIME SETTINGS
+// =====================================================
+
+exports.getOvertimeSettings = async (req, res) => {
+    try {
+
+        const result = await pool.query(`
+            SELECT
+                id,
+                weekday_rate,
+                weekend_rate,
+                created_at,
+                updated_at
+            FROM overtime_settings
+            ORDER BY id ASC
+            LIMIT 1
+        `);
+
+        if (result.rows.length === 0) {
+
+            return res.status(404).json({
+                success: false,
+                message: "Pengaturan tarif lembur belum tersedia."
+            });
+
+        }
+
+        return res.json({
+            success: true,
+            data: result.rows[0]
+        });
+
+    } catch (err) {
+
+        console.error(
+            "GET OVERTIME SETTINGS ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+};
+
+
+// =====================================================
+// UPDATE OVERTIME SETTINGS
+// =====================================================
+
+exports.updateOvertimeSettings = async (req, res) => {
+    try {
+
+        const {
+            weekday_rate,
+            weekend_rate
+        } = req.body;
+
+
+        // =====================================
+        // VALIDASI
+        // =====================================
+
+        if (
+            weekday_rate === undefined ||
+            weekend_rate === undefined
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Tarif weekday dan weekend wajib diisi."
+            });
+
+        }
+
+
+        const weekdayRate =
+            Number(weekday_rate);
+
+        const weekendRate =
+            Number(weekend_rate);
+
+
+        if (
+            !Number.isFinite(weekdayRate) ||
+            !Number.isFinite(weekendRate)
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Tarif harus berupa angka."
+            });
+
+        }
+
+
+        if (
+            weekdayRate < 0 ||
+            weekendRate < 0
+        ) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Tarif tidak boleh kurang dari 0."
+            });
+
+        }
+
+
+        // =====================================
+        // UPDATE
+        // =====================================
+
+        const result = await pool.query(
+            `
+            UPDATE overtime_settings
+            SET
+                weekday_rate = $1,
+                weekend_rate = $2,
+                updated_at = NOW()
+            WHERE id = (
+                SELECT id
+                FROM overtime_settings
+                ORDER BY id ASC
+                LIMIT 1
+            )
+            RETURNING
+                id,
+                weekday_rate,
+                weekend_rate,
+                created_at,
+                updated_at
+            `,
+            [
+                weekdayRate,
+                weekendRate
+            ]
+        );
+
+
+        if (result.rows.length === 0) {
+
+            return res.status(404).json({
+                success: false,
+                message:
+                    "Pengaturan tarif lembur belum tersedia."
+            });
+
+        }
+
+
+        return res.json({
+            success: true,
+            message:
+                "Pengaturan tarif lembur berhasil diperbarui.",
+            data: result.rows[0]
+        });
+
+
+    } catch (err) {
+
+        console.error(
+            "UPDATE OVERTIME SETTINGS ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
         });
 
     }

@@ -54,4 +54,15 @@ router.get(
     controller.getAdminRecap
 );
 
+router.get(
+    "admin/settings",
+    auth,
+    controller.getOvertimeSettings
+);
+
+router.patch(
+    "admin/settings",
+    auth,
+    controller.updateOvertimeSettings
+);
 module.exports = router;

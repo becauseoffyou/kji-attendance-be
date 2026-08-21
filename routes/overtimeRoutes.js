@@ -44,13 +44,13 @@ router.get(
 
 router.patch(
     "/:id/pay",
-    authMiddleware,
+    auth,
     overtimeController.markAsPaid
 );
 
 router.get(
     "/admin/recap",
-    authMiddleware,
+    auth,
     overtimeController.getAdminRecap
 );
 

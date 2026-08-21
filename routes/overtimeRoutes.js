@@ -55,13 +55,13 @@ router.get(
 );
 
 router.get(
-    "admin/settings",
+    "/admin/settings",
     auth,
     controller.getOvertimeSettings
 );
 
 router.patch(
-    "admin/settings",
+    "/admin/settings",
     auth,
     controller.updateOvertimeSettings
 );

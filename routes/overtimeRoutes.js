@@ -45,13 +45,13 @@ router.get(
 router.patch(
     "/:id/pay",
     auth,
-    overtimeController.markAsPaid
+    controller.markAsPaid
 );
 
 router.get(
     "/admin/recap",
     auth,
-    overtimeController.getAdminRecap
+    controller.getAdminRecap
 );
 
 module.exports = router;

@@ -903,9 +903,9 @@ exports.getAdminRecap = async (req, res) => {
         let paramIndex = 1;
 
 
-        // -------------------------------------
-        // NAMA KARYAWAN
-        // -------------------------------------
+        // =====================================
+        // NAMA
+        // =====================================
 
         if (name.trim()) {
 
@@ -922,9 +922,9 @@ exports.getAdminRecap = async (req, res) => {
         }
 
 
-        // -------------------------------------
+        // =====================================
         // DEPARTMENT
-        // -------------------------------------
+        // =====================================
 
         if (department.trim()) {
 
@@ -941,9 +941,9 @@ exports.getAdminRecap = async (req, res) => {
         }
 
 
-        // -------------------------------------
+        // =====================================
         // TANGGAL MULAI
-        // -------------------------------------
+        // =====================================
 
         if (start_date) {
 
@@ -960,9 +960,9 @@ exports.getAdminRecap = async (req, res) => {
         }
 
 
-        // -------------------------------------
+        // =====================================
         // TANGGAL SELESAI
-        // -------------------------------------
+        // =====================================
 
         if (end_date) {
 
@@ -1012,7 +1012,8 @@ exports.getAdminRecap = async (req, res) => {
         const countResult =
             await pool.query(
                 `
-                SELECT COUNT(*)::int AS total
+                SELECT
+                    COUNT(*)::int AS total
 
                 FROM overtime_requests o
 
@@ -1027,6 +1028,82 @@ exports.getAdminRecap = async (req, res) => {
 
         const total =
             countResult.rows[0].total;
+
+
+        // =====================================
+        // SUMMARY
+        //
+        // Hanya lembur APPROVED
+        // yang masuk perhitungan tagihan
+        // =====================================
+
+        const summaryResult =
+            await pool.query(
+                `
+                SELECT
+
+                    COUNT(*) FILTER (
+                        WHERE o.status = 'APPROVED'
+                    )::int AS approved_count,
+
+
+                    COALESCE(
+                        SUM(
+                            o.duration_minutes
+                        ) FILTER (
+                            WHERE o.status = 'APPROVED'
+                        ),
+                        0
+                    )::int AS approved_minutes,
+
+
+                    COALESCE(
+                        SUM(
+                            o.overtime_amount
+                        ) FILTER (
+                            WHERE o.status = 'APPROVED'
+                        ),
+                        0
+                    )::numeric AS total_bill,
+
+
+                    COALESCE(
+                        SUM(
+                            o.overtime_amount
+                        ) FILTER (
+                            WHERE
+                                o.status = 'APPROVED'
+                                AND o.payment_status = 'UNPAID'
+                        ),
+                        0
+                    )::numeric AS unpaid_bill,
+
+
+                    COALESCE(
+                        SUM(
+                            o.overtime_amount
+                        ) FILTER (
+                            WHERE
+                                o.status = 'APPROVED'
+                                AND o.payment_status = 'PAID'
+                        ),
+                        0
+                    )::numeric AS paid_bill
+
+
+                FROM overtime_requests o
+
+                JOIN users u
+                    ON u.id = o.user_id
+
+                ${whereClause}
+                `,
+                values
+            );
+
+
+        const summary =
+            summaryResult.rows[0];
 
 
         // =====================================
@@ -1065,6 +1142,10 @@ exports.getAdminRecap = async (req, res) => {
 
                     o.paid_by,
 
+                    o.hourly_rate,
+
+                    o.overtime_amount,
+
 
                     u.id AS user_id,
 
@@ -1096,7 +1177,27 @@ exports.getAdminRecap = async (req, res) => {
 
 
         // =====================================
-        // PAGINATION INFO
+        // KONVERSI SUMMARY
+        // =====================================
+
+        const approvedMinutes =
+            Number(
+                summary.approved_minutes || 0
+            );
+
+
+        const totalHours =
+            Math.floor(
+                approvedMinutes / 60
+            );
+
+
+        const totalMinutes =
+            approvedMinutes % 60;
+
+
+        // =====================================
+        // PAGINATION
         // =====================================
 
         const totalPages =
@@ -1105,11 +1206,48 @@ exports.getAdminRecap = async (req, res) => {
             );
 
 
+        // =====================================
+        // RESPONSE
+        // =====================================
+
         return res.json({
 
             success: true,
 
             data: result.rows,
+
+            summary: {
+
+                approved_count:
+                    Number(
+                        summary.approved_count || 0
+                    ),
+
+                total_minutes:
+                    approvedMinutes,
+
+                total_hours:
+                    totalHours,
+
+                total_remaining_minutes:
+                    totalMinutes,
+
+                total_bill:
+                    Number(
+                        summary.total_bill || 0
+                    ),
+
+                unpaid_bill:
+                    Number(
+                        summary.unpaid_bill || 0
+                    ),
+
+                paid_bill:
+                    Number(
+                        summary.paid_bill || 0
+                    )
+
+            },
 
             pagination: {
 

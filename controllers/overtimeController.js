@@ -710,3 +710,116 @@ exports.managerDetail = async (req, res) => {
     }
 
 };
+
+// =====================================================
+// MARK OVERTIME AS PAID
+// =====================================================
+
+exports.markAsPaid = async (req, res) => {
+
+    try {
+
+        const overtimeId = req.params.id;
+
+        const result = await pool.query(
+            `
+            UPDATE overtime_requests
+            SET
+                payment_status = 'PAID',
+                paid_at = NOW(),
+                paid_by = $1
+            WHERE id = $2
+              AND status = 'APPROVED'
+              AND payment_status = 'UNPAID'
+            RETURNING *
+            `,
+            [
+                req.user.id,
+                overtimeId
+            ]
+        );
+
+
+        if (result.rowCount === 0) {
+
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Pengajuan lembur tidak ditemukan, belum disetujui, atau sudah dibayar."
+            });
+
+        }
+
+
+        return res.json({
+            success: true,
+            message:
+                "Pembayaran lembur berhasil dicatat.",
+            data: result.rows[0]
+        });
+
+
+    } catch (err) {
+
+        console.error(
+            "MARK OVERTIME PAID ERROR:",
+            err
+        );
+
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+
+    }
+
+};
+
+exports.getAdminRecap = async (req, res) => {
+    try {
+
+        const result = await pool.query(`
+            SELECT
+                o.id,
+                o.overtime_date,
+                o.start_time,
+                o.end_time,
+                o.duration_minutes,
+                o.reason,
+                o.status,
+                o.payment_status,
+                o.paid_at,
+                o.paid_by,
+
+                u.id AS user_id,
+                u.name AS employee_name
+
+            FROM overtime_requests o
+
+            JOIN users u
+                ON u.id = o.user_id
+
+            ORDER BY
+                o.overtime_date DESC,
+                o.id DESC
+        `);
+
+        return res.json({
+            success: true,
+            data: result.rows
+        });
+
+    } catch (err) {
+
+        console.error(
+            "GET OVERTIME ADMIN RECAP ERROR:",
+            err
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};

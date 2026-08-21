@@ -42,4 +42,16 @@ router.get(
     controller.managerDetail
 );
 
+router.patch(
+    "/:id/pay",
+    authMiddleware,
+    overtimeController.markAsPaid
+);
+
+router.get(
+    "/admin/recap",
+    authMiddleware,
+    overtimeController.getAdminRecap
+);
+
 module.exports = router;

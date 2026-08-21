@@ -18,6 +18,18 @@ router.get(
     controller.history
 );
 
+router.get(
+    "/history",
+    auth,
+    controller.history
+);
+
+router.get(
+    "/my-recap",
+    auth,
+    controller.myRecap
+);
+
 router.put(
     "/:id/approve",
     auth,

@@ -1462,3 +1462,177 @@ exports.updateOvertimeSettings = async (req, res) => {
 
     }
 };
+
+exports.myRecap = async (req, res) => {
+    try {
+
+        const userId = req.user.id;
+
+        // =====================================
+        // AMBIL DATA LEMBUR USER
+        // =====================================
+
+        const result = await pool.query(
+            `
+            SELECT
+                o.id,
+                o.overtime_date,
+                o.start_time,
+                o.end_time,
+                o.duration_minutes,
+                o.reason,
+                o.status,
+                o.payment_status,
+                o.paid_at,
+                o.hourly_rate,
+                o.overtime_amount
+
+            FROM overtime_requests o
+
+            WHERE o.user_id = $1
+
+            ORDER BY
+                o.overtime_date DESC,
+                o.id DESC
+            `,
+            [userId]
+        );
+
+
+        // =====================================
+        // SUMMARY
+        // =====================================
+
+        const summaryResult = await pool.query(
+            `
+            SELECT
+
+                COUNT(*) FILTER (
+                    WHERE status = 'APPROVED'
+                )::int AS approved_count,
+
+                COALESCE(
+                    SUM(duration_minutes)
+                    FILTER (
+                        WHERE status = 'APPROVED'
+                    ),
+                    0
+                )::int AS total_minutes,
+
+                COALESCE(
+                    SUM(overtime_amount)
+                    FILTER (
+                        WHERE status = 'APPROVED'
+                    ),
+                    0
+                )::numeric AS total_bill,
+
+                COALESCE(
+                    SUM(overtime_amount)
+                    FILTER (
+                        WHERE
+                            status = 'APPROVED'
+                            AND payment_status = 'UNPAID'
+                    ),
+                    0
+                )::numeric AS unpaid_bill,
+
+                COALESCE(
+                    SUM(overtime_amount)
+                    FILTER (
+                        WHERE
+                            status = 'APPROVED'
+                            AND payment_status = 'PAID'
+                    ),
+                    0
+                )::numeric AS paid_bill
+
+            FROM overtime_requests
+
+            WHERE user_id = $1
+            `,
+            [userId]
+        );
+
+
+        const summary =
+            summaryResult.rows[0];
+
+
+        const totalMinutes =
+            Number(
+                summary.total_minutes || 0
+            );
+
+
+        const totalHours =
+            Math.floor(
+                totalMinutes / 60
+            );
+
+
+        const remainingMinutes =
+            totalMinutes % 60;
+
+
+        return res.json({
+
+            success: true,
+
+            data: result.rows,
+
+            summary: {
+
+                approved_count:
+                    Number(
+                        summary.approved_count || 0
+                    ),
+
+                total_minutes:
+                    totalMinutes,
+
+                total_hours:
+                    totalHours,
+
+                total_remaining_minutes:
+                    remainingMinutes,
+
+                total_bill:
+                    Number(
+                        summary.total_bill || 0
+                    ),
+
+                unpaid_bill:
+                    Number(
+                        summary.unpaid_bill || 0
+                    ),
+
+                paid_bill:
+                    Number(
+                        summary.paid_bill || 0
+                    )
+
+            }
+
+        });
+
+
+    } catch (err) {
+
+        console.error(
+            "GET MY OVERTIME RECAP ERROR:",
+            err
+        );
+
+
+        return res.status(500).json({
+
+            success: false,
+
+            message:
+                err.message
+
+        });
+
+    }
+};

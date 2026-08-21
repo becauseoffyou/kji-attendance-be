@@ -779,36 +779,267 @@ exports.markAsPaid = async (req, res) => {
 exports.getAdminRecap = async (req, res) => {
     try {
 
-        const result = await pool.query(`
-            SELECT
-                o.id,
-                o.overtime_date,
-                o.start_time,
-                o.end_time,
-                o.duration_minutes,
-                o.reason,
-                o.status,
-                o.payment_status,
-                o.paid_at,
-                o.paid_by,
+        const {
+            page = 1,
+            limit = 10,
+            name = "",
+            department = "",
+            start_date = "",
+            end_date = "",
+            sort = "latest"
+        } = req.query;
 
-                u.id AS user_id,
-                u.name AS employee_name
 
-            FROM overtime_requests o
+        // =====================================
+        // PAGINATION
+        // =====================================
 
-            JOIN users u
-                ON u.id = o.user_id
+        const pageNumber =
+            Math.max(parseInt(page) || 1, 1);
 
-            ORDER BY
-                o.overtime_date DESC,
-                o.id DESC
-        `);
+        const limitNumber =
+            Math.min(
+                Math.max(parseInt(limit) || 10, 1),
+                100
+            );
+
+        const offset =
+            (pageNumber - 1) * limitNumber;
+
+
+        // =====================================
+        // FILTER
+        // =====================================
+
+        const conditions = [];
+
+        const values = [];
+
+        let paramIndex = 1;
+
+
+        // -------------------------------------
+        // NAMA KARYAWAN
+        // -------------------------------------
+
+        if (name.trim()) {
+
+            conditions.push(
+                `u.name ILIKE $${paramIndex}`
+            );
+
+            values.push(
+                `%${name.trim()}%`
+            );
+
+            paramIndex++;
+
+        }
+
+
+        // -------------------------------------
+        // DEPARTMENT
+        // -------------------------------------
+
+        if (department.trim()) {
+
+            conditions.push(
+                `u.department = $${paramIndex}`
+            );
+
+            values.push(
+                department.trim()
+            );
+
+            paramIndex++;
+
+        }
+
+
+        // -------------------------------------
+        // TANGGAL MULAI
+        // -------------------------------------
+
+        if (start_date) {
+
+            conditions.push(
+                `o.overtime_date >= $${paramIndex}`
+            );
+
+            values.push(
+                start_date
+            );
+
+            paramIndex++;
+
+        }
+
+
+        // -------------------------------------
+        // TANGGAL SELESAI
+        // -------------------------------------
+
+        if (end_date) {
+
+            conditions.push(
+                `o.overtime_date <= $${paramIndex}`
+            );
+
+            values.push(
+                end_date
+            );
+
+            paramIndex++;
+
+        }
+
+
+        // =====================================
+        // WHERE
+        // =====================================
+
+        const whereClause =
+            conditions.length > 0
+                ? `WHERE ${conditions.join(" AND ")}`
+                : "";
+
+
+        // =====================================
+        // SORTING
+        // =====================================
+
+        const orderClause =
+            sort === "oldest"
+                ? `
+                    o.overtime_date ASC,
+                    o.id ASC
+                  `
+                : `
+                    o.overtime_date DESC,
+                    o.id DESC
+                  `;
+
+
+        // =====================================
+        // TOTAL DATA
+        // =====================================
+
+        const countResult =
+            await pool.query(
+                `
+                SELECT COUNT(*)::int AS total
+
+                FROM overtime_requests o
+
+                JOIN users u
+                    ON u.id = o.user_id
+
+                ${whereClause}
+                `,
+                values
+            );
+
+
+        const total =
+            countResult.rows[0].total;
+
+
+        // =====================================
+        // DATA REKAP
+        // =====================================
+
+        const dataValues = [
+            ...values,
+            limitNumber,
+            offset
+        ];
+
+
+        const result =
+            await pool.query(
+                `
+                SELECT
+
+                    o.id,
+
+                    o.overtime_date,
+
+                    o.start_time,
+
+                    o.end_time,
+
+                    o.duration_minutes,
+
+                    o.reason,
+
+                    o.status,
+
+                    o.payment_status,
+
+                    o.paid_at,
+
+                    o.paid_by,
+
+
+                    u.id AS user_id,
+
+                    u.name AS employee_name,
+
+                    u.department
+
+
+                FROM overtime_requests o
+
+
+                JOIN users u
+                    ON u.id = o.user_id
+
+
+                ${whereClause}
+
+
+                ORDER BY
+                    ${orderClause}
+
+
+                LIMIT $${paramIndex}
+
+                OFFSET $${paramIndex + 1}
+                `,
+                dataValues
+            );
+
+
+        // =====================================
+        // PAGINATION INFO
+        // =====================================
+
+        const totalPages =
+            Math.ceil(
+                total / limitNumber
+            );
+
 
         return res.json({
+
             success: true,
-            data: result.rows
+
+            data: result.rows,
+
+            pagination: {
+
+                page: pageNumber,
+
+                limit: limitNumber,
+
+                total,
+
+                totalPages
+
+            }
+
         });
+
 
     } catch (err) {
 
@@ -817,9 +1048,14 @@ exports.getAdminRecap = async (req, res) => {
             err
         );
 
+
         return res.status(500).json({
+
             success: false,
+
             message: err.message
+
         });
+
     }
 };

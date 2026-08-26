@@ -270,7 +270,10 @@ WHERE aer.user_id = $1
             `,
       [userId],
     );
-
+    const leaveBalance =
+      Number(
+        balance.rows[0]?.leave_balance || 0
+      );
     const summaryResult = await pool.query(
       `
     SELECT
@@ -329,7 +332,8 @@ WHERE aer.user_id = $1
     `,
       [userId],
     );
-
+    const leaveSummary =
+      summaryResult.rows[0] || {};
     return res.json({
       success: true,
 

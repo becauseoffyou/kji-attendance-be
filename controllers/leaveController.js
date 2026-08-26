@@ -271,14 +271,89 @@ WHERE aer.user_id = $1
       [userId],
     );
 
+    const summaryResult = await pool.query(
+      `
+    SELECT
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN leave_type = 'CUTI'
+                     AND leave_category = 'TAHUNAN'
+                     AND status = 'APPROVED'
+                    THEN (
+                        end_date - start_date + 1
+                    )
+                    ELSE 0
+                END
+            ),
+            0
+        )::int AS cuti_taken_days,
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN leave_type = 'SAKIT'
+                     AND status = 'APPROVED'
+                    THEN (
+                        end_date - start_date + 1
+                    )
+                    ELSE 0
+                END
+            ),
+            0
+        )::int AS sick_deduction_days,
+
+        COALESCE(
+            SUM(
+                CASE
+                    WHEN leave_type = 'CUTI'
+                     AND leave_category IN (
+                         'MENIKAH',
+                         'MELAHIRKAN',
+                         'KELUARGA_MENINGGAL'
+                     )
+                     AND status = 'APPROVED'
+                    THEN (
+                        end_date - start_date + 1
+                    )
+                    ELSE 0
+                END
+            ),
+            0
+        )::int AS special_leave_days
+
+    FROM leave_requests
+
+    WHERE user_id = $1
+    `,
+      [userId],
+    );
+
     return res.json({
       success: true,
 
       summary: {
-        leave_balance: balance.rows[0]?.leave_balance || 0,
+        leave_balance:
+          leaveBalance,
+
+        cuti_taken_days:
+          Number(
+            leaveSummary.cuti_taken_days || 0
+          ),
+
+        sick_deduction_days:
+          Number(
+            leaveSummary.sick_deduction_days || 0
+          ),
+
+        special_leave_days:
+          Number(
+            leaveSummary.special_leave_days || 0
+          )
       },
 
-      data: result.rows,
+      data: result.rows
     });
   } catch (err) {
     console.error("LEAVE HISTORY ERROR:", err);

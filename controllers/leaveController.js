@@ -184,27 +184,26 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-            SELECT
-                id,
-                leave_type,
-                start_date,
-                end_date,
-                reason,
-                attachment,
-                status,
-                approval_note,
-                created_at,
+          SELECT
+    id,
+    leave_type,
+    leave_category,
+    start_date,
+    end_date,
+    reason,
+    attachment,
+    status,
+    approval_note,
+    created_at,
 
-                'LEAVE' AS request_type,
+    'LEAVE' AS request_type,
 
-                NULL::timestamp AS old_check_in,
-                NULL::timestamp AS new_check_in,
-                NULL::timestamp AS old_check_out,
-                NULL::timestamp AS new_check_out
-
-            FROM leave_requests
-
-            WHERE user_id = $1
+    NULL::timestamp AS old_check_in,
+    NULL::timestamp AS new_check_in,
+    NULL::timestamp AS old_check_out,
+    NULL::timestamp AS new_check_out
+FROM leave_requests
+WHERE user_id = $1
 
 
             UNION ALL

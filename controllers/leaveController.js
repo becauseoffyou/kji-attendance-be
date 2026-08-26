@@ -5,7 +5,7 @@ exports.create = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const { leave_type, start_date, end_date, reason } = req.body;
+    const { leave_type, leave_category, start_date, end_date, reason } = req.body;
 
     if (!leave_type || !start_date || !end_date) {
       if (req.file && fs.existsSync(req.file.path)) {
@@ -78,6 +78,7 @@ AND (
   (
       user_id,
       leave_type,
+      leave_category,
       start_date,
       end_date,
       reason,
@@ -86,13 +87,22 @@ AND (
   )
   VALUES
   (
-      $1,$2,$3,$4,$5,$6,$7
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    'PENDING_SUPERVISOR'
   )
   RETURNING id
   `,
       [
         userId,
         leave_type,
+        leave_type === "CUTI"
+          ? leave_category
+          : null,
         start_date,
         end_date,
         reason,

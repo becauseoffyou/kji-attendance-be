@@ -184,7 +184,7 @@ exports.history = async (req, res) => {
 
     const result = await pool.query(
       `
-          SELECT
+      SELECT
     id,
     leave_type,
     leave_category,
@@ -202,55 +202,56 @@ exports.history = async (req, res) => {
     NULL::timestamp AS new_check_in,
     NULL::timestamp AS old_check_out,
     NULL::timestamp AS new_check_out
+
 FROM leave_requests
+
 WHERE user_id = $1
 
 
             UNION ALL
 
 
-            SELECT
-                aer.id,
+        SELECT
+    aer.id,
 
-                'PERUBAHAN ABSENSI' AS leave_type,
+    'PERUBAHAN ABSENSI' AS leave_type,
 
-                a.attendance_date AS start_date,
-                a.attendance_date AS end_date,
+    NULL::varchar(50) AS leave_category,
 
-                aer.reason,
+    a.attendance_date AS start_date,
+    a.attendance_date AS end_date,
 
-                NULL::text AS attachment,
+    aer.reason,
 
-                CASE
-                    WHEN aer.status = 'PENDING'
-                        THEN 'PENDING_SUPERVISOR'
-                    ELSE aer.status
-                END AS status,
+    NULL::text AS attachment,
 
-                CASE
-                    WHEN aer.status = 'REJECTED'
-                        THEN aer.rejection_reason
-                    ELSE NULL
-                END AS approval_note,
+    CASE
+        WHEN aer.status = 'PENDING'
+            THEN 'PENDING_SUPERVISOR'
+        ELSE aer.status
+    END AS status,
 
-                aer.created_at,
+    CASE
+        WHEN aer.status = 'REJECTED'
+            THEN aer.rejection_reason
+        ELSE NULL
+    END AS approval_note,
 
-                'ATTENDANCE_EDIT' AS request_type,
+    aer.created_at,
 
-                aer.old_check_in,
-                aer.new_check_in,
-                aer.old_check_out,
-                aer.new_check_out
+    'ATTENDANCE_EDIT' AS request_type,
 
-            FROM attendance_edit_requests aer
+    aer.old_check_in,
+    aer.new_check_in,
+    aer.old_check_out,
+    aer.new_check_out
 
-            JOIN attendance a
-                ON a.id = aer.attendance_id
+FROM attendance_edit_requests aer
 
-            WHERE aer.user_id = $1
+JOIN attendance a
+    ON a.id = aer.attendance_id
 
-
-            ORDER BY created_at DESC
+WHERE aer.user_id = $1
             `,
       [userId],
     );

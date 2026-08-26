@@ -93,20 +93,28 @@ AND (
     $4,
     $5,
     $6,
-    'PENDING_SUPERVISOR'
+    $7,
+    $8
   )
   RETURNING id
   `,
       [
         userId,
+
         leave_type,
+
         leave_type === "CUTI"
           ? leave_category
           : null,
+
         start_date,
+
         end_date,
+
         reason,
+
         attachment,
+
         "PENDING_SUPERVISOR",
       ],
     );

@@ -279,19 +279,22 @@ WHERE aer.user_id = $1
     SELECT
 
         COALESCE(
-            SUM(
-                CASE
-                    WHEN leave_type = 'CUTI'
-                     AND leave_category = 'TAHUNAN'
-                     AND status = 'APPROVED'
-                    THEN (
-                        end_date - start_date + 1
-                    )
-                    ELSE 0
-                END
-            ),
-            0
-        )::int AS cuti_taken_days,
+    SUM(
+        CASE
+            WHEN leave_type = 'CUTI'
+             AND status = 'APPROVED'
+             AND (
+                 leave_category = 'TAHUNAN'
+                 OR leave_category IS NULL
+             )
+            THEN (
+                end_date - start_date + 1
+            )
+            ELSE 0
+        END
+    ),
+    0
+)::int AS cuti_taken_days,
 
         COALESCE(
             SUM(

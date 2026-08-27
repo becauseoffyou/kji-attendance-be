@@ -334,7 +334,7 @@ exports.leaveDetail = async (req, res) => {
     const leaveDays =
       Math.ceil(
         (new Date(data.end_date) - new Date(data.start_date)) /
-          (1000 * 60 * 60 * 24),
+        (1000 * 60 * 60 * 24),
       ) + 1;
 
     const isAnnualLeave = data.leave_type === "CUTI";
@@ -367,7 +367,10 @@ exports.approveLeave = async (req, res) => {
     await client.query("BEGIN");
 
     const { id } = req.params;
-    const { note } = req.body;
+    const {
+      note,
+      deduct_leave = false
+    } = req.body;
 
     const supervisorId = req.user.id;
 
@@ -424,12 +427,24 @@ exports.approveLeave = async (req, res) => {
     const leaveDays =
       Math.ceil(
         (new Date(leave.end_date) - new Date(leave.start_date)) /
-          (1000 * 60 * 60 * 24),
+        (1000 * 60 * 60 * 24),
       ) + 1;
 
-    const isAnnualLeave = leave.leave_type === "CUTI";
+    const isAnnualLeave =
+      leave.leave_type === "CUTI";
 
-    if (isAnnualLeave && leave.leave_balance < leaveDays) {
+    const isSickLeaveDeducted =
+      leave.leave_type === "SAKIT" &&
+      deduct_leave === true;
+
+    const shouldDeductLeave =
+      isAnnualLeave ||
+      isSickLeaveDeducted;
+
+    if (
+      shouldDeductLeave &&
+      leave.leave_balance < leaveDays
+    ) {
       await client.query("ROLLBACK");
 
       return res.status(400).json({
@@ -439,13 +454,13 @@ exports.approveLeave = async (req, res) => {
     }
 
     // Kurangi saldo cuti
-    if (isAnnualLeave) {
+    if (shouldDeductLeave) {
       await client.query(
         `
-      UPDATE users
-      SET leave_balance = leave_balance - $1
-      WHERE id = $2
-    `,
+        UPDATE users
+        SET leave_balance = leave_balance - $1
+        WHERE id = $2
+        `,
         [leaveDays, leave.user_id],
       );
     }
@@ -453,17 +468,21 @@ exports.approveLeave = async (req, res) => {
     // Approve
     await client.query(
       `
-            UPDATE leave_requests
-            SET
-
-                status = 'APPROVED',
-                approval_note = $1,
-                approved_by = $2,
-                approved_at = NOW()
-
-            WHERE id = $3
-            `,
-      [note, supervisorId, id],
+    UPDATE leave_requests
+    SET
+        status = 'APPROVED',
+        approval_note = $1,
+        approved_by = $2,
+        approved_at = NOW(),
+        deduct_leave = $4
+    WHERE id = $3
+  `,
+      [
+        note,
+        supervisorId,
+        id,
+        deduct_leave
+      ],
     );
 
     await client.query(

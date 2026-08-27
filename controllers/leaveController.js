@@ -296,11 +296,12 @@ WHERE aer.user_id = $1
         COALESCE(
             SUM(
                 CASE
-                    WHEN leave_type = 'SAKIT'
-                     AND status = 'APPROVED'
-                    THEN (
-                        end_date - start_date + 1
-                    )
+                 WHEN leave_type = 'SAKIT'
+ AND status = 'APPROVED'
+ AND deduct_leave = true
+THEN (
+    end_date - start_date + 1
+)
                     ELSE 0
                 END
             ),

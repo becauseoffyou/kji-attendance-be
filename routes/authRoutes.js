@@ -37,6 +37,7 @@ router.get(
 
 router.get(
   "/roles",
+  authMiddleware,
   adminMiddleware,
   authController.getRoles
 );

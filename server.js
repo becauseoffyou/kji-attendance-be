@@ -51,7 +51,8 @@ const supervisorRoutes = require("./routes/leaderRoutes");
 const notificationRoutes = require("./routes/notificationRoute");
 const testRoutes = require("./routes/testRoutes");
 const overtimeRoutes = require("./routes/overtimeRoutes");
-
+const announcementRoutes =
+  require("./routes/announRoute");
 app.use(
   "/api/overtime",
   overtimeRoutes,
@@ -60,9 +61,10 @@ app.use(
 // ==============================
 // Middleware
 // ==============================
-
-console.log("SERVER DIR:", __dirname);
-console.log("UPLOADS DIR:", path.join(__dirname, "uploads"));
+app.use(
+  "/api/announcements",
+  announcementRoutes
+);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ==============================

@@ -35,6 +35,12 @@ router.get(
   authController.getEmployees,
 );
 
+router.get(
+  "/roles",
+  adminMiddleware,
+  authController.getRoles
+);
+
 router.put(
   "/employees/:id",
   authMiddleware,

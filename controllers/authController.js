@@ -139,6 +139,7 @@ exports.createEmployee = async (req, res) => {
       phone,
       department,
       position,
+      role_id,
       join_date,
       address,
       employee_type,
@@ -152,7 +153,7 @@ exports.createEmployee = async (req, res) => {
     // VALIDASI
     // =========================
 
-    if (!nik || !name || !email || !department) {
+    if (!nik || !name || !email || !department || !role_id) {
       return res.status(400).json({
         success: false,
         message: "NIK, nama, email, dan departemen wajib diisi",
@@ -185,6 +186,23 @@ exports.createEmployee = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "NIK atau email sudah terdaftar",
+      });
+    }
+
+    const roleCheck = await pool.query(
+      `
+    SELECT id, name
+    FROM roles
+    WHERE id = $1
+    LIMIT 1
+  `,
+      [role_id]
+    );
+
+    if (roleCheck.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Jabatan tidak valid",
       });
     }
 
@@ -236,44 +254,46 @@ exports.createEmployee = async (req, res) => {
                 office_location_id,
                 supervisor_id
             )
-            VALUES (
-                3,
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7,
-                $8,
-                $9,
-                $10,
-                $11,
-                true,
-                $12,
-                $13,
-                $14,
-                $15,
-                $16
-            )
-            RETURNING
-                id,
-                nik,
-                name,
-                email,
-                phone,
-                department,
-                position,
-                photo,
-                ktp,
-                join_date,
-                address,
-                status,
-                employee_type,
-                contract_start_date,
-                contract_end_date
+           VALUES (
+    $1,
+    $2,
+    $3,
+    $4,
+    $5,
+    $6,
+    $7,
+    $8,
+    $9,
+    $10,
+    $11,
+    $12,
+    true,
+    $13,
+    $14,
+    $15,
+    $16,
+    $17
+)
+           RETURNING
+    id,
+    role_id,
+    nik,
+    name,
+    email,
+    phone,
+    department,
+    position,
+    photo,
+    ktp,
+    join_date,
+    address,
+    status,
+    employee_type,
+    contract_start_date,
+    contract_end_date
             `,
       [
+        role_id,
         nik,
         name,
         email,
@@ -438,6 +458,34 @@ exports.getEmployees = async (req, res) => {
       success: false,
       message: "Gagal mengambil data karyawan",
     });
+  }
+};
+
+exports.getRoles = async (req, res) => {
+  try {
+
+    const result = await pool.query(`
+      SELECT
+        id,
+        name
+      FROM roles
+      ORDER BY id ASC
+    `);
+
+    return res.status(200).json({
+      success: true,
+      data: result.rows,
+    });
+
+  } catch (err) {
+
+    console.error("GET ROLES ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal mengambil data jabatan",
+    });
+
   }
 };
 

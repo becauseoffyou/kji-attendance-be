@@ -18,7 +18,8 @@ exports.getActiveAnnouncements = async (req, res) => {
         button_link,
         sort_order,
         start_date,
-        end_date
+        end_date,
+        url
       FROM announcements
       WHERE is_active = true
         AND (
@@ -75,7 +76,8 @@ exports.getAllAnnouncements = async (req, res) => {
         start_date,
         end_date,
         created_at,
-        updated_at
+        updated_at,
+        url 
       FROM announcements
       ORDER BY sort_order ASC, created_at DESC
     `);
@@ -119,6 +121,7 @@ exports.createAnnouncement = async (req, res) => {
       sort_order,
       start_date,
       end_date,
+      url,
     } = req.body;
 
 
@@ -141,45 +144,46 @@ exports.createAnnouncement = async (req, res) => {
           "Tanggal selesai tidak boleh sebelum tanggal mulai",
       });
     }
-
-
     const result = await pool.query(
       `
-        INSERT INTO announcements (
-          title,
-          description,
-          image_url,
-          button_text,
-          button_link,
-          is_active,
-          sort_order,
-          start_date,
-          end_date
-        )
-        VALUES (
-          $1,
-          $2,
-          $3,
-          $4,
-          $5,
-          $6,
-          $7,
-          $8,
-          $9
-        )
-        RETURNING *
-      `,
+    INSERT INTO announcements (
+      title,
+      description,
+      image_url,
+      url,
+      button_text,
+      button_link,
+      is_active,
+      sort_order,
+      start_date,
+      end_date
+    )
+    VALUES (
+      $1,
+      $2,
+      $3,
+      $4,
+      $5,
+      $6,
+      $7,
+      $8,
+      $9,
+      $10
+    )
+    RETURNING *
+  `,
       [
         title,
         description || null,
         image_url || null,
+        url || null,
         button_text || null,
         button_link || null,
         is_active !== false,
         Number(sort_order) || 0,
         start_date || null,
         end_date || null,
-      ],
+      ]
     );
 
 

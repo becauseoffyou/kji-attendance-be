@@ -1,3 +1,5 @@
+
+
 const express = require("express");
 
 const router = express.Router();
@@ -11,7 +13,9 @@ const authMiddleware =
 const adminMiddleware =
     require("../middleware/adminMiddleware");
 
-
+const {
+    uploadAnnouncement,
+} = require("../middleware/uploadMiddleware");
 // =====================================
 // EMPLOYEE
 // =====================================
@@ -39,6 +43,7 @@ router.post(
     "/",
     authMiddleware,
     adminMiddleware,
+    uploadAnnouncement,
     announcementController.createAnnouncement
 );
 

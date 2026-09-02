@@ -5,6 +5,7 @@ const fs = require("fs");
 // Folder upload
 const photoDir = path.join(__dirname, "../uploads/photos");
 const ktpDir = path.join(__dirname, "../uploads/ktp");
+const announcementDir = path.join(__dirname, "../uploads/announcements");
 const employeeStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     if (file.fieldname === "photo") {
@@ -33,7 +34,7 @@ const employeeStorage = multer.diskStorage({
 // Buat folder otomatis kalau belum ada
 fs.mkdirSync(photoDir, { recursive: true });
 fs.mkdirSync(ktpDir, { recursive: true });
-
+fs.mkdirSync(announcementDir, { recursive: true });
 // Storage foto
 const photoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -92,6 +93,30 @@ const uploadKtp = multer({
     fileSize: 5 * 1024 * 1024,
   },
 });
+
+const announcementStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, announcementDir);
+  },
+
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+
+    const filename =
+      `announcement-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+
+    cb(null, filename);
+  },
+});
+
+const uploadAnnouncement = multer({
+  storage: announcementStorage,
+  fileFilter: imageFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+}).single("image");
+
 const uploadEmployee = multer({
   storage: employeeStorage,
   fileFilter: imageFilter,
@@ -103,4 +128,5 @@ module.exports = {
   uploadPhoto,
   uploadEmployee,
   uploadKtp,
+  uploadAnnouncement,
 };

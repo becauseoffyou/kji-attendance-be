@@ -30,9 +30,7 @@ exports.getActiveAnnouncements = async (req, res) => {
           end_date IS NULL
           OR end_date >= CURRENT_DATE
         )
-      ORDER BY
-        sort_order ASC,
-        created_at DESC
+    ORDER BY created_at DESC
     `);
 
     return res.status(200).json({
@@ -79,7 +77,7 @@ exports.getAllAnnouncements = async (req, res) => {
         updated_at,
         url 
       FROM announcements
-      ORDER BY sort_order ASC, created_at DESC
+     ORDER BY created_at DESC
     `);
 
     return res.status(200).json({
@@ -114,16 +112,11 @@ exports.createAnnouncement = async (req, res) => {
     const {
       title,
       description,
-      image_url,
-      button_text,
-      button_link,
+      url,
       is_active,
-      sort_order,
       start_date,
       end_date,
-      url,
     } = req.body;
-
 
     if (!title) {
       return res.status(400).json({
@@ -132,60 +125,37 @@ exports.createAnnouncement = async (req, res) => {
       });
     }
 
+    let image_url = null;
 
-    if (
-      start_date &&
-      end_date &&
-      new Date(end_date) < new Date(start_date)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Tanggal selesai tidak boleh sebelum tanggal mulai",
-      });
+    if (req.file) {
+      image_url =
+        `/uploads/announcements/${req.file.filename}`;
     }
+
     const result = await pool.query(
       `
-    INSERT INTO announcements (
-      title,
-      description,
-      image_url,
-      url,
-      button_text,
-      button_link,
-      is_active,
-      sort_order,
-      start_date,
-      end_date
-    )
-    VALUES (
-      $1,
-      $2,
-      $3,
-      $4,
-      $5,
-      $6,
-      $7,
-      $8,
-      $9,
-      $10
-    )
-    RETURNING *
-  `,
+            INSERT INTO announcements (
+                title,
+                description,
+                image_url,
+                url,
+                is_active,
+                start_date,
+                end_date
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *
+            `,
       [
         title,
         description || null,
-        image_url || null,
+        image_url,
         url || null,
-        button_text || null,
-        button_link || null,
-        is_active !== false,
-        Number(sort_order) || 0,
+        is_active === "false" ? false : true,
         start_date || null,
         end_date || null,
       ]
     );
-
 
     return res.status(201).json({
       success: true,
@@ -204,6 +174,5 @@ exports.createAnnouncement = async (req, res) => {
       success: false,
       message: "Gagal membuat pengumuman",
     });
-
   }
 };

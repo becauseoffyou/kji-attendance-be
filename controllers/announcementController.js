@@ -176,3 +176,43 @@ exports.createAnnouncement = async (req, res) => {
     });
   }
 };
+
+exports.updateAnnouncementStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+
+    const result = await pool.query(
+      `
+            UPDATE announcements
+            SET
+                is_active = $1,
+                updated_at = NOW()
+            WHERE id = $2
+            RETURNING *
+            `,
+      [is_active, id]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Pengumuman tidak ditemukan"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Status pengumuman berhasil diperbarui",
+      data: result.rows[0]
+    });
+
+  } catch (err) {
+    console.error("UPDATE ANNOUNCEMENT STATUS ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: "Gagal memperbarui status pengumuman"
+    });
+  }
+};

@@ -47,5 +47,12 @@ router.post(
     announcementController.createAnnouncement
 );
 
+router.patch(
+    "/:id/status",
+    authMiddleware,
+    adminMiddleware,
+    announcementController.updateAnnouncementStatus
+);
+
 
 module.exports = router;
